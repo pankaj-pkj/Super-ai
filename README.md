@@ -1,4 +1,4 @@
-# 🧠 Super AI — Self-Training Mind
+# 🧠 Super AI — Self-Training Mind by Panku
 
 A **fully self-contained AI**. No OpenAI, no external AI API, no build step, no
 dependencies. The mind trains itself, harvests knowledge from GitHub and the web,

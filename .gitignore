@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+superai_state.db*
+*.db

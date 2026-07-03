@@ -38,6 +38,8 @@ applyZoom();
 // ---------------- boot ----------------
 (async function boot() {
   applyI18n();
+  // ask the browser to never evict our storage (model cache + knowledge)
+  try { navigator.storage?.persist?.(); } catch { /* optional */ }
   store = await createStore();
   brain = new SuperBrain(store);
   await brain.init();
@@ -50,6 +52,10 @@ applyZoom();
   await refreshTokens();
   await refreshStats();
   await refreshEvolution();
+  await restoreHistory();
+
+  realBrain.userName = await store.getKV("user_name");
+  autoLoadBrain(); // reload cached Real Brain in the background (no re-download)
 
   harvester.start(); // 24×7 self-learning while the tab is open
   setInterval(refreshStats, 15000);
@@ -58,6 +64,49 @@ applyZoom();
   $("bootMsg")?.remove();
   $("input").focus();
 })();
+
+// bring back the last conversation so a refresh never wipes the chat
+async function restoreHistory() {
+  const chats = await store.recentChats(12);
+  if (!chats.length) return;
+  for (const c of chats) {
+    addMsg("user", md(c.prompt));
+    const m = addMsg("ai", md(c.response));
+    const info = MODELS[c.model] || {};
+    m.querySelector(".meta").innerHTML =
+      `<span>${info.icon || ""} ${info.name || c.model}</span><span>⛁ ${c.tokens} tokens</span>` +
+      `<span class="fb" title="Good" onclick="feedback(this,${c.id},true)">👍</span>` +
+      `<span class="fb" title="Bad" onclick="feedback(this,${c.id},false)">👎</span>`;
+  }
+  const sep = document.createElement("div");
+  sep.className = "history-sep";
+  sep.textContent = lang === "hi" ? "— pichhli baatein upar, nayi shuru karo —" : "— previous conversation above —";
+  $("chat").appendChild(sep);
+  $("chat").scrollTop = $("chat").scrollHeight;
+}
+
+// if the user loaded a Real Brain before, load it again from the browser
+// cache automatically — no click, no re-download
+async function autoLoadBrain() {
+  const saved = localStorage.getItem("superai_brain_model");
+  if (!saved || !realBrain.supported() || realBrain.ready) return;
+  setBrainBadge(lang === "hi" ? "cache se load ho raha…" : "loading from cache…");
+  try {
+    await realBrain.load(saved, (r) => {
+      const pct = Math.round((r.progress || 0) * 100);
+      setBrainBadge(pct < 100 ? pct + "%" : "…");
+    });
+    setBrainBadge("ready ✓");
+    toast("🧩 Real Brain ready (from cache) — " + saved.split("-q4")[0], "good");
+  } catch {
+    setBrainBadge("");
+  }
+}
+
+function setBrainBadge(text) {
+  const el = document.getElementById("brainBadge");
+  if (el) { el.textContent = text || "LLM"; el.classList.toggle("on", /ready/.test(text)); }
+}
 
 // ---------------- i18n ----------------
 function applyI18n() {
@@ -84,12 +133,15 @@ function loadModels() {
     const d = document.createElement("div");
     d.className = "model" + (id === currentModel ? " active" : "");
     d.onclick = () => selectModel(id);
+    const tierPill = id === "super-brain"
+      ? `<span class="pill" id="brainBadge">${realBrain.ready ? "ready ✓" : m.tier}</span>`
+      : `<span class="pill">${m.tier}</span>`;
     d.innerHTML = `
       <div class="mi">${m.icon}</div>
       <div style="flex:1">
         <div class="mn">${m.name}</div>
         <div class="mt">${m.task}</div>
-        <div class="badges"><span class="pill">${m.tier}</span><span class="pill cost">${m.cost}× tokens</span></div>
+        <div class="badges">${tierPill}<span class="pill cost">${m.cost}× tokens</span></div>
       </div>`;
     list.appendChild(d);
   }
@@ -167,21 +219,69 @@ async function refreshEvolution() {
 }
 
 // ---------------- chat ----------------
+const LANG_EXT = { python: "py", javascript: "js", html: "html", java: "java", cpp: "cpp",
+  c: "c", sql: "sql", css: "css", bash: "sh", go: "go", rust: "rs", typescript: "ts" };
+
 function md(s) {
   // protect code blocks first so inline rules can't mangle code (underscores!)
   const codes = [];
   let h = escapeHtml(s);
   h = h.replace(/```([\s\S]*?)(```|$)/g, (_, c) => {
-    // drop a leading bare language hint (```python / ```sql / ```javascript)
-    codes.push(c.replace(/^[ \t]*[a-z0-9+#]{1,12}\r?\n/i, "").trim());
-    return "" + (codes.length - 1) + "";
+    // capture the language hint (```python / ```sql), then strip it from the code
+    const langMatch = c.match(/^[ \t]*([a-z0-9+#]{1,12})\r?\n/i);
+    const cl = langMatch ? langMatch[1].toLowerCase() : "";
+    codes.push({ code: c.replace(/^[ \t]*[a-z0-9+#]{1,12}\r?\n/i, "").trim(), lang: cl });
+    return "\uE000" + (codes.length - 1) + "\uE001";
   });
   h = h.replace(/`([^`]+)`/g, "<code>$1</code>");
   h = h.replace(/\*\*([^*\n]{1,200})\*\*/g, "<b>$1</b>");
   h = h.replace(/(^|[\s(])_([^_\n]{3,160})_(?=$|[\s.,;:)!?])/gm, "$1<em>$2</em>");
-  h = h.replace(/^[•*-] /gm, "&bull; ");
-  h = h.replace(/(\d+)/g, (_, i) => `<pre>${codes[+i]}</pre>`);
+  h = h.replace(/^[\u2022*-] /gm, "&bull; ");
+  h = h.replace(/\uE000(\d+)\uE001/g, (_, i) => {
+    const { code, lang: cl } = codes[+i];
+    return `<div class="codebox"><div class="codebar"><span class="cb-lang">${cl || "code"}</span>` +
+      `<span class="cb-actions"><button class="cb-btn" onclick="copyCode(this)">\u{1F4CB} Copy</button>` +
+      `<button class="cb-btn" onclick="downloadCode(this,'${LANG_EXT[cl] || "txt"}')">\u2B07 Save</button></span></div>` +
+      `<pre>${code}</pre></div>`;
+  });
   return h;
+}
+
+window.copyCode = function (btn) {
+  const code = btn.closest(".codebox").querySelector("pre").innerText;
+  navigator.clipboard.writeText(code).then(
+    () => { btn.textContent = "\u2705 Copied"; setTimeout(() => (btn.innerHTML = "\u{1F4CB} Copy"), 1600); },
+    () => toast("\u26A0\uFE0F copy blocked by browser", "bad"));
+};
+window.downloadCode = function (btn, ext) {
+  const code = btn.closest(".codebox").querySelector("pre").innerText;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([code], { type: "text/plain" }));
+  a.download = "superai-code." + ext;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+// Typewriter effect for local answers. Fixed frame count (~65 frames) means
+// even a huge code answer finishes in ~1.6s and never hangs the browser.
+function typeOut(bubble, text) {
+  return new Promise((resolve) => {
+    const total = text.length;
+    const step = Math.max(4, Math.ceil(total / 65));
+    let i = 0;
+    const iv = setInterval(() => {
+      i += step;
+      if (i >= total) {
+        clearInterval(iv);
+        bubble.innerHTML = md(text);
+        $("chat").scrollTop = $("chat").scrollHeight;
+        resolve();
+        return;
+      }
+      bubble.innerHTML = md(text.slice(0, i)) + '<span class="caret"></span>';
+      $("chat").scrollTop = $("chat").scrollHeight;
+    }, 24);
+  });
 }
 function addMsg(role, html) {
   $("welcome")?.remove();
@@ -217,7 +317,7 @@ window.send = async function () {
     }
 
     const t0 = performance.now();
-    let response;
+    let response, aiMsg;
     if (currentModel === "super-brain") {
       if (!realBrain.ready) {
         typing.remove();
@@ -227,17 +327,30 @@ window.send = async function () {
           : "Load the Real Brain first — one-time download, then everything runs inside your browser (no API)."));
         busy = false; $("sendBtn").disabled = false; return;
       }
-      // stream tokens live into the bubble
+      // stream into ONE bubble, throttled to ~12fps so big code never hangs the tab
       typing.remove();
-      const m = addMsg("ai", "");
-      const bubble = m.querySelector(".bubble");
-      response = await realBrain.chat(text, (partial) => {
-        bubble.innerHTML = md(partial);
-        $("chat").scrollTop = $("chat").scrollHeight;
-      });
-      m.remove(); // re-added below with meta, keeps the code path uniform
+      aiMsg = addMsg("ai", '<span class="caret"></span>');
+      const bubble = aiMsg.querySelector(".bubble");
+      let latest = "", done = false;
+      const painter = setInterval(() => {
+        if (latest) {
+          bubble.innerHTML = md(latest) + (done ? "" : '<span class="caret"></span>');
+          $("chat").scrollTop = $("chat").scrollHeight;
+        }
+        if (done) clearInterval(painter);
+      }, 80);
+      try {
+        response = await realBrain.chat(text, (partial) => { latest = partial; });
+      } finally {
+        done = true;
+      }
+      latest = response;
+      bubble.innerHTML = md(response);
     } else {
       response = await brain.respond(text, currentModel);
+      typing.remove();
+      aiMsg = addMsg("ai", "");
+      await typeOut(aiMsg.querySelector(".bubble"), response);
     }
     const latency = Math.round(performance.now() - t0);
     const cost = bank.costOf(text, response, currentModel);
@@ -245,9 +358,7 @@ window.send = async function () {
     const chatId = await store.logChat(userId, currentModel, text, response, cost);
     brain.learnFromChat(text); // learn from the user (fire and forget)
 
-    typing.remove();
-    const m = addMsg("ai", md(response));
-    const meta = m.querySelector(".meta");
+    const meta = aiMsg.querySelector(".meta");
     const info = MODELS[currentModel];
     meta.innerHTML = `
       <span>${info.icon} ${info.name}</span>
@@ -347,7 +458,9 @@ window.loadRealBrain = async function () {
       $("brainStatus").textContent = (r.text || "").slice(0, 90) || `${pct}%`;
     });
     window.closeBrainModal();
-    toast("🧩 Real Brain ready — " + sel.value.split("-q4")[0], "good");
+    localStorage.setItem("superai_brain_model", sel.value); // auto-reload next visit
+    setBrainBadge("ready ✓");
+    toast("🧩 Real Brain ready — " + sel.value.split("-q4")[0] + " (cached: next visit loads instantly)", "good");
     brain.evolve("real-brain", `loaded ${sel.value} via WebLLM (local, no API)`);
     refreshEvolution();
   } catch (e) {

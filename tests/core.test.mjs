@@ -145,4 +145,33 @@ const fb2 = await brain.respond("write a compiler for brainfuck in zig", "super-
 assert.ok(fb2.includes("Real Brain"), "honest fallback suggests Real Brain");
 ok("code fallback honest");
 
+// ============ NEW: multi-language codegen ============
+const javaFib = await brain.respond("write fibonacci in java", "super-coder");
+assert.ok(javaFib.includes("public static int[]") && javaFib.includes("(java)"), "java fibonacci");
+const cppPal = await brain.respond("palindrome program in c++", "super-coder");
+assert.ok(cppPal.includes("#include") && cppPal.includes("(cpp)"), "c++ palindrome");
+ok("codegen: Java + C++ variants");
+
+// new templates
+const tbl = await brain.respond("7 ka table print karne ka code likho", "super-coder");
+assert.ok(tbl.includes("print_table") || tbl.includes("x"), "multiplication table");
+const gcd = await brain.respond("write a function for gcd and lcm", "super-coder");
+assert.ok(gcd.includes("gcd"), "gcd/lcm");
+const pw = await brain.respond("generate a random password function", "super-coder");
+assert.ok(pw.includes("secrets") || pw.includes("crypto"), "secure password");
+ok("codegen: table, gcd/lcm, password templates");
+
+// ============ NEW: personal memory ============
+const saveName = await brain.respond("mera naam Pankaj hai", "super-chat");
+assert.ok(saveName.includes("Pankaj"), "name saved");
+const recall = await brain.respond("mera naam kya hai?", "super-chat");
+assert.ok(recall.includes("Pankaj"), "name recalled: " + recall);
+ok("memory: remembers the user's name");
+
+// recentChats for history restore
+await store.logChat("u_test", "super-chat", "history q", "history a", 5);
+const recent = await store.recentChats(5);
+assert.ok(recent.length >= 1 && recent[recent.length - 1].prompt === "history q", "recentChats works");
+ok("chat history restore data");
+
 console.log(`\nALL ${pass} CHECKS PASSED`);

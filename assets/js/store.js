@@ -95,6 +95,11 @@ class BaseStore {
     if (row) { row.feedback = feedback; await this._put("chats", row); }
   }
   async chatCount() { return this._count("chats"); }
+  async recentChats(limit = 20) {
+    const rows = await this._all("chats");
+    rows.sort((a, b) => a.id - b.id);
+    return rows.slice(-limit);
+  }
   async feedbackStats() {
     const chats = await this._all("chats");
     return {

@@ -79,9 +79,19 @@ body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
 .bubble{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:13px 16px;font-size:14px;line-height:1.65;white-space:pre-wrap;word-break:break-word;min-width:60px}
 .msg.user .bubble{background:linear-gradient(135deg,rgba(124,92,255,.22),rgba(0,212,255,.1));border-color:rgba(124,92,255,.4)}
 .bubble code,.bubble pre{background:#0a0d18;border:1px solid var(--border);border-radius:8px;font-family:'Cascadia Code',Consolas,monospace;font-size:12.5px}
-.bubble pre{padding:11px;margin:8px 0;overflow-x:auto;white-space:pre}
+.bubble pre{padding:11px;margin:0;overflow-x:auto;white-space:pre}
 .bubble code{padding:1px 5px}
 .bubble em{color:var(--dim);font-size:12px}
+.codebox{margin:8px 0;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.codebox pre{border:none;border-radius:0}
+.codebar{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:#141930;border-bottom:1px solid var(--border)}
+.cb-lang{font-size:10.5px;color:var(--accent2);text-transform:uppercase;letter-spacing:1px;font-family:monospace}
+.cb-actions{display:flex;gap:6px}
+.cb-btn{border:1px solid var(--border);background:var(--panel);color:var(--muted);font-size:10.5px;padding:3px 9px;border-radius:7px;cursor:pointer;transition:.15s}
+.cb-btn:hover{border-color:var(--accent);color:var(--text)}
+.caret{display:inline-block;width:8px;height:15px;background:var(--accent2);border-radius:2px;vertical-align:-2px;animation:blink .8s infinite}
+.history-sep{text-align:center;font-size:10.5px;color:var(--dim);padding:8px 0;border-bottom:1px dashed var(--border);margin-bottom:6px}
+.pill.on{color:var(--good);border-color:rgba(47,214,123,.5)}
 .meta{display:flex;gap:10px;align-items:center;margin-top:7px;font-size:10.5px;color:var(--dim);flex-wrap:wrap}
 .fb{cursor:pointer;opacity:.55;transition:.15s;font-size:13px}
 .fb:hover{opacity:1;transform:scale(1.2)}

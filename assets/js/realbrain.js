@@ -6,16 +6,34 @@
 
 export const BRAIN_MODELS = [
   {
+    id: "SmolLM2-360M-Instruct-q4f16_1-MLC",
+    label: "SmolLM2 (360M) — Lite",
+    size: "~270 MB",
+    desc: "Lightest — works on most phones",
+  },
+  {
     id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
     label: "Qwen 2.5 (0.5B) — Fast",
     size: "~350 MB",
-    desc: "Best for phones & quick answers",
+    desc: "Good balance for phones & quick answers",
   },
   {
     id: "Llama-3.2-1B-Instruct-q4f16_1-MLC",
     label: "Llama 3.2 (1B) — Smart",
     size: "~880 MB",
-    desc: "Meta's Llama brain — better answers, needs a decent device",
+    desc: "Meta's Llama brain — much better answers",
+  },
+  {
+    id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
+    label: "Qwen 2.5 (1.5B) — Smarter",
+    size: "~1.6 GB",
+    desc: "Strong coding — good laptops/PCs",
+  },
+  {
+    id: "Llama-3.2-3B-Instruct-q4f16_1-MLC",
+    label: "Llama 3.2 (3B) — Best",
+    size: "~2.3 GB",
+    desc: "Best quality — needs a PC with a real GPU",
   },
 ];
 
@@ -66,8 +84,10 @@ export class RealBrain {
   // Streams the reply; onToken receives the accumulated text so far.
   async chat(prompt, onToken) {
     if (!this.engine) throw new Error("Real Brain not loaded yet");
+    let sys = SYSTEM_PROMPT;
+    if (this.userName) sys += ` The user's name is ${this.userName}.`;
     const messages = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: sys },
       ...this.history.slice(-8),
       { role: "user", content: prompt },
     ];

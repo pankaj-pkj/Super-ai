@@ -56,6 +56,26 @@ export function trySmallTalk(prompt) {
   if (/\bjoke\b|chutkula|hasao|funny/i.test(p))
     return JOKES[Math.floor(Math.random() * JOKES.length)];
 
+  if (/how old are you|(tumhari|teri|aapki|apki)\s*(age|umar)|kitne saal/i.test(p))
+    return hi ? "Meri koi umar nahi hai 😄 — main har second naya seekhti hu, to technically har second nayi hu! Mera evolution counter sidebar me dikh raha hai."
+              : "I don't have an age 😄 — I learn something new every second, so technically I'm brand new every second! Check my evolution counter in the sidebar.";
+
+  if (/where (do you|are you)|kaha (rehti|rahti|se ho)|kahan (rehti|se ho)/i.test(p))
+    return hi ? "Main aapke browser ke andar rehti hu! 🏠 Meri saari knowledge, neural weights aur yaadein aapke device ki IndexedDB me save hain — kisi server par nahi."
+              : "I live inside your browser! 🏠 All my knowledge, neural weights and memories are stored in your device's IndexedDB — not on any server.";
+
+  if (/i love you|love you|pyar/i.test(p))
+    return hi ? "Aww 😊 Main bhi aapki chats se hi seekhti-badhti hu. Chalo kuch cool banate hain saath me!"
+              : "Aww 😊 I grow from every chat with you. Let's build something cool together!";
+
+  if (/kya kar (rahi|raha|rhi|rha)|what are you doing/i.test(p))
+    return hi ? "Abhi main background me seekh rahi hu — GitHub repos padh rahi hu, curiosity queue solve kar rahi hu, aur neural model train kar rahi hu. 24×7 yahi chalta hai! Aap batao, kya karna hai?"
+              : "Right now I'm learning in the background — reading GitHub repos, resolving my curiosity queue, and training my neural model. That runs 24×7! What would you like to do?";
+
+  if (/\bbored\b|bore ho|kuch batao|kuch sunao/i.test(p))
+    return hi ? "Bore mat ho! Ye try karo:\n• 'snake game banao' ya 'digital clock banao'\n• 'password generator ka code do'\n• '789 * 456 kitna hoga'\n• Ya 🧩 Real Brain load karke kisi bhi topic par baat karo!"
+              : "Don't be bored! Try:\n• 'make a digital clock' or 'build a stopwatch'\n• 'generate a password function'\n• 'what is 789 * 456'\n• Or load the 🧩 Real Brain and chat about anything!";
+
   if (/good (morning|night|evening|afternoon)|shubh (prabhat|ratri)/i.test(p))
     return hi ? "Shubh din! 🌞 Chalo kuch naya seekhte-banate hain." : "Good day to you! 🌞 Let's learn or build something new.";
 
@@ -132,6 +152,27 @@ print(${f}(10))  # [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]`,
 }
 
 console.log(${f}(10)); // [0,1,1,2,3,5,8,13,21,34]`,
+    java: (f) => `public static int[] ${f}(int n) {
+    int[] seq = new int[n];
+    int a = 0, b = 1;
+    for (int i = 0; i < n; i++) {
+        seq[i] = a;
+        int t = a + b; a = b; b = t;
+    }
+    return seq;
+}
+// System.out.println(Arrays.toString(${f}(10)));`,
+    cpp: (f) => `#include <vector>
+#include <iostream>
+
+std::vector<long long> ${f}(int n) {
+    std::vector<long long> seq;
+    long long a = 0, b = 1;
+    for (int i = 0; i < n; i++) { seq.push_back(a); long long t = a + b; a = b; b = t; }
+    return seq;
+}
+
+int main() { for (auto x : ${f}(10)) std::cout << x << ' '; }`,
     en: "iteratively builds the sequence — O(n), no recursion overflow",
     hi: "loop se sequence banata hai — O(n), recursion ka jhanjhat nahi",
   },
@@ -149,6 +190,24 @@ print(${f}("A man, a plan"))  # False`,
 }
 
 console.log(${f}("Nitin")); // true`,
+    java: (f) => `public static boolean ${f}(String s) {
+    String t = s.toLowerCase().replaceAll("[^a-z0-9]", "");
+    return t.equals(new StringBuilder(t).reverse().toString());
+}
+// System.out.println(${f}("Nitin"));  // true`,
+    cpp: (f) => `#include <string>
+#include <algorithm>
+#include <cctype>
+#include <iostream>
+
+bool ${f}(std::string s) {
+    std::string t;
+    for (char c : s) if (std::isalnum(c)) t += std::tolower(c);
+    std::string r(t.rbegin(), t.rend());
+    return t == r;
+}
+
+int main() { std::cout << ${f}("Nitin"); }  // 1`,
     en: "cleans the string, then compares it with its reverse",
     hi: "string saaf karke usko ulta karke compare karta hai",
   },
@@ -170,8 +229,273 @@ print([x for x in range(30) if ${f}(x)])  # [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]
 }
 
 console.log([...Array(30).keys()].filter(${f})); // [2,3,5,7,...]`,
+    java: (f) => `public static boolean ${f}(int n) {
+    if (n < 2) return false;
+    for (int i = 2; (long) i * i <= n; i++)
+        if (n % i == 0) return false;
+    return true;
+}`,
+    cpp: (f) => `#include <iostream>
+
+bool ${f}(long long n) {
+    if (n < 2) return false;
+    for (long long i = 2; i * i <= n; i++)
+        if (n % i == 0) return false;
+    return true;
+}
+
+int main() { for (int i = 0; i < 30; i++) if (${f}(i)) std::cout << i << ' '; }`,
     en: "checks divisors only up to √n — fast for large numbers",
     hi: "sirf √n tak divisors check karta hai — bade numbers ke liye fast",
+  },
+  {
+    re: /\bgcd\b|\bhcf\b|greatest common|\blcm\b|least common/i, fn: "gcd_lcm",
+    py: (f) => `import math
+
+def ${f}(a, b):
+    g = math.gcd(a, b)
+    return g, a * b // g   # (gcd, lcm)
+
+print(${f}(12, 18))  # (6, 36)`,
+    js: (f) => `function ${f}(a, b) {
+  const gcd = (x, y) => (y ? gcd(y, x % y) : x);
+  const g = gcd(a, b);
+  return { gcd: g, lcm: (a * b) / g };
+}
+
+console.log(${f}(12, 18)); // { gcd: 6, lcm: 36 }`,
+    en: "Euclid's algorithm for GCD; LCM = a*b/gcd",
+    hi: "GCD ke liye Euclid ka algorithm; LCM = a*b/gcd",
+  },
+  {
+    re: /even or odd|odd or even|even odd|sam.*visham/i, fn: "even_or_odd",
+    py: (f) => `def ${f}(n):
+    return "even" if n % 2 == 0 else "odd"
+
+print(${f}(7))   # odd
+print(${f}(10))  # even`,
+    js: (f) => `function ${f}(n) {
+  return n % 2 === 0 ? "even" : "odd";
+}
+
+console.log(${f}(7)); // "odd"`,
+    en: "modulo 2 tells you the parity",
+    hi: "2 se modulo lene par parity pata chal jaati hai",
+  },
+  {
+    re: /multiplication table|table (print|of|likho|banao)|pahada|paha?da/i, fn: "print_table",
+    py: (f) => `def ${f}(n, upto=10):
+    for i in range(1, upto + 1):
+        print(f"{n} x {i} = {n * i}")
+
+${f}(7)`,
+    js: (f) => `function ${f}(n, upto = 10) {
+  for (let i = 1; i <= upto; i++) console.log(n + " x " + i + " = " + n * i);
+}
+
+${f}(7);`,
+    en: "prints the multiplication table of any number",
+    hi: "kisi bhi number ka pahada print karta hai",
+  },
+  {
+    re: /min(imum)?.*max(imum)?|max(imum)?.*min(imum)?|largest.*smallest|sabse (bada|chota)/i, fn: "min_max",
+    py: (f) => `def ${f}(nums):
+    return min(nums), max(nums)
+
+lo, hi = ${f}([7, 2, 9, 4])
+print(lo, hi)  # 2 9`,
+    js: (f) => `function ${f}(nums) {
+  return { min: Math.min(...nums), max: Math.max(...nums) };
+}
+
+console.log(${f}([7, 2, 9, 4])); // { min: 2, max: 9 }`,
+    en: "one pass over the list finds both ends",
+    hi: "ek hi pass me dono milte hain",
+  },
+  {
+    re: /remove duplicat|unique (item|element|value)|duplicate hatao/i, fn: "remove_duplicates",
+    py: (f) => `def ${f}(items):
+    return list(dict.fromkeys(items))   # keeps original order
+
+print(${f}([1, 2, 2, 3, 1]))  # [1, 2, 3]`,
+    js: (f) => `function ${f}(items) {
+  return [...new Set(items)];   // keeps original order
+}
+
+console.log(${f}([1, 2, 2, 3, 1])); // [1, 2, 3]`,
+    en: "a set drops repeats while preserving first-seen order",
+    hi: "set repeat hatata hai, pehla order bana rehta hai",
+  },
+  {
+    re: /anagram/i, fn: "is_anagram",
+    py: (f) => `def ${f}(a, b):
+    norm = lambda s: sorted(s.lower().replace(" ", ""))
+    return norm(a) == norm(b)
+
+print(${f}("listen", "silent"))  # True`,
+    js: (f) => `function ${f}(a, b) {
+  const norm = (s) => s.toLowerCase().replace(/ /g, "").split("").sort().join("");
+  return norm(a) === norm(b);
+}
+
+console.log(${f}("listen", "silent")); // true`,
+    en: "same letters in a different order sort to the same string",
+    hi: "same letters alag order me — sort karne par same ho jaate hain",
+  },
+  {
+    re: /celsius|fahrenheit|temperature convert/i, fn: "convert_temp",
+    py: (f) => `def ${f}(value, to="f"):
+    return value * 9 / 5 + 32 if to == "f" else (value - 32) * 5 / 9
+
+print(${f}(100))        # 212.0 (C -> F)
+print(${f}(98.6, "c"))  # 37.0  (F -> C)`,
+    js: (f) => `function ${f}(value, to = "f") {
+  return to === "f" ? value * 9 / 5 + 32 : (value - 32) * 5 / 9;
+}
+
+console.log(${f}(100)); // 212`,
+    en: "C→F: ×9/5+32, F→C: −32×5/9",
+    hi: "C→F: ×9/5+32, F→C: −32×5/9",
+  },
+  {
+    re: /password generat|random password|strong password/i, fn: "generate_password",
+    py: (f) => `import secrets, string
+
+def ${f}(length=14):
+    chars = string.ascii_letters + string.digits + "!@#$%^&*"
+    return "".join(secrets.choice(chars) for _ in range(length))
+
+print(${f}())  # e.g. r7@Kp2!xW9qLm4`,
+    js: (f) => `function ${f}(length = 14) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  const buf = crypto.getRandomValues(new Uint32Array(length));
+  return [...buf].map((n) => chars[n % chars.length]).join("");
+}
+
+console.log(${f}());`,
+    en: "uses the crypto-secure random source, never Math.random for passwords",
+    hi: "crypto-secure random use karta hai — passwords ke liye Math.random kabhi nahi",
+  },
+  {
+    re: /age calculat|umar (nikal|calculat)|calculate age/i, fn: "calculate_age",
+    py: (f) => `from datetime import date
+
+def ${f}(year, month, day):
+    today = date.today()
+    return today.year - year - ((today.month, today.day) < (month, day))
+
+print(${f}(2000, 6, 15))`,
+    js: (f) => `function ${f}(year, month, day) {
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age--;
+  return age;
+}
+
+console.log(${f}(2000, 6, 15));`,
+    en: "subtracts years, minus one if the birthday hasn't come yet this year",
+    hi: "saal ghatao, agar is saal birthday nahi aaya to ek aur ghatao",
+  },
+  {
+    re: /guess(ing)? (the )?number|number guess/i, fn: "guessing_game",
+    py: (f) => `import random
+
+def ${f}():
+    secret = random.randint(1, 100)
+    tries = 0
+    while True:
+        guess = int(input("Guess (1-100): "))
+        tries += 1
+        if guess < secret:
+            print("Higher!")
+        elif guess > secret:
+            print("Lower!")
+        else:
+            print(f"Correct in {tries} tries!")
+            break
+
+${f}()`,
+    js: (f) => `function ${f}() {
+  const secret = Math.floor(Math.random() * 100) + 1;
+  let tries = 0, guess;
+  do {
+    guess = Number(prompt("Guess (1-100):"));
+    tries++;
+    if (guess < secret) alert("Higher!");
+    else if (guess > secret) alert("Lower!");
+  } while (guess !== secret);
+  alert("Correct in " + tries + " tries!");
+}
+
+${f}();`,
+    en: "a classic higher/lower guessing game",
+    hi: "classic higher/lower guessing game",
+  },
+  {
+    re: /rock paper scissors|stone paper/i, fn: "rock_paper_scissors",
+    py: (f) => `import random
+
+def ${f}(player):
+    options = ["rock", "paper", "scissors"]
+    cpu = random.choice(options)
+    if player == cpu:
+        return f"CPU chose {cpu} - draw!"
+    wins = {"rock": "scissors", "paper": "rock", "scissors": "paper"}
+    return f"CPU chose {cpu} - you " + ("win!" if wins[player] == cpu else "lose!")
+
+print(${f}("rock"))`,
+    js: (f) => `function ${f}(player) {
+  const options = ["rock", "paper", "scissors"];
+  const cpu = options[Math.floor(Math.random() * 3)];
+  if (player === cpu) return "CPU chose " + cpu + " - draw!";
+  const wins = { rock: "scissors", paper: "rock", scissors: "paper" };
+  return "CPU chose " + cpu + " - you " + (wins[player] === cpu ? "win!" : "lose!");
+}
+
+console.log(${f}("rock"));`,
+    en: "each option beats exactly one other",
+    hi: "har option ek dusre ko harata hai",
+  },
+  {
+    re: /digital clock|clock (banao|html)/i, fn: "clock",
+    html: () => `<!DOCTYPE html>
+<html>
+<body style="display:grid;place-items:center;height:100vh;margin:0;background:#0b0e1a">
+  <div id="clock" style="font:700 64px monospace;color:#00d4ff;text-shadow:0 0 30px #00d4ff88"></div>
+  <script>
+    function tick() {
+      document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>`,
+    en: "a glowing digital clock — save as clock.html and open it",
+    hi: "glowing digital clock — clock.html save karke kholo",
+  },
+  {
+    re: /stopwatch|timer (app|banao)/i, fn: "stopwatch",
+    html: () => `<!DOCTYPE html>
+<html>
+<body style="display:grid;place-items:center;height:100vh;margin:0;background:#0b0e1a;color:#fff;font-family:monospace">
+  <div style="text-align:center">
+    <div id="d" style="font-size:56px">0.00</div>
+    <button onclick="start()">Start</button>
+    <button onclick="stop()">Stop</button>
+    <button onclick="reset()">Reset</button>
+  </div>
+  <script>
+    let t0 = 0, acc = 0, iv = null;
+    const show = () => document.getElementById('d').textContent = ((acc + (t0 ? Date.now() - t0 : 0)) / 1000).toFixed(2);
+    function start() { if (!iv) { t0 = Date.now(); iv = setInterval(show, 50); } }
+    function stop() { if (iv) { acc += Date.now() - t0; t0 = 0; clearInterval(iv); iv = null; show(); } }
+    function reset() { stop(); acc = 0; show(); }
+  </script>
+</body>
+</html>`,
+    en: "start/stop/reset stopwatch in one file",
+    hi: "start/stop/reset stopwatch ek hi file me",
   },
   {
     re: /factorial/i, fn: "factorial",
@@ -504,25 +828,25 @@ export function tryCodeGen(prompt) {
   let code, usedLang, note = "";
   if (tpl.html && (lang === "html" || (!tpl.py && !tpl.js))) {
     code = tpl.html(); usedLang = "html";
-  } else if (lang === "javascript" && tpl.js) {
-    code = tpl.js(name); usedLang = "javascript";
-  } else if ((lang === "python" || lang === null) && tpl.py) {
+  } else if (lang && tpl[lang === "javascript" ? "js" : lang === "python" ? "py" : lang]) {
+    // exact requested language available (python/javascript/java/cpp/...)
+    const key = lang === "javascript" ? "js" : lang === "python" ? "py" : lang;
+    code = tpl[key](name); usedLang = lang;
+  } else if (!lang && tpl.py) {
+    code = tpl.py(name); usedLang = "python";
+  } else if (tpl.py) {
     code = tpl.py(name); usedLang = "python";
   } else if (tpl.js) {
     code = tpl.js(name); usedLang = "javascript";
-    if (lang && !["javascript", "python", "html"].includes(lang))
-      note = hindi
-        ? `\n\n_Maine JavaScript me diya hai; ${lang} version ke liye 🧩 Real Brain load karo (sidebar) — wo har language likh sakta hai._`
-        : `\n\n_Shown in JavaScript; for a ${lang} version load the 🧩 Real Brain (sidebar) — it writes any language._`;
   } else if (tpl.html) {
     code = tpl.html(); usedLang = "html";
   } else {
     return null;
   }
-  if (lang && !["javascript", "python", "html"].includes(lang) && !note && usedLang === "python")
+  if (lang && lang !== usedLang)
     note = hindi
-      ? `\n\n_Maine Python me diya hai; ${lang} version ke liye 🧩 Real Brain load karo (sidebar)._`
-      : `\n\n_Shown in Python; for ${lang} load the 🧩 Real Brain (sidebar)._`;
+      ? `\n\n_Maine ${usedLang} me diya hai; exact ${lang} version ke liye 🧩 Real Brain load karo (sidebar) — wo har language likh sakta hai._`
+      : `\n\n_Shown in ${usedLang}; for an exact ${lang} version load the 🧩 Real Brain (sidebar) — it writes any language._`;
 
   const intro = hindi ? `Ye raha aapka code (${usedLang}):` : `Here's your code (${usedLang}):`;
   const explain = hindi ? `**Kaise kaam karta hai:** ${tpl.hi}` : `**How it works:** ${tpl.en}`;

@@ -233,8 +233,10 @@ export class SuperBrain {
         : `I am Super AI — a fully self-contained mind with no external API. I run 100% in your browser, persist my knowledge in IndexedDB, and keep learning 24×7. So far I've read ${docs} documents (${sents} sentences), trained my own neural model for ${st.steps_trained} steps, and evolved ${this.evolutionCycle} times. Pick the 🧩 Real Brain to run an actual Llama/Qwen LLM inside me.`;
     }
 
-    // universal skills first (except raw-neural model): small talk, math, code writing
+    // universal skills first (except raw-neural model): memory, small talk, math, code
     if (model !== "super-llama") {
+      const mem = await this._tryMemory(prompt, hindi);
+      if (mem) return mem;
       const st = trySmallTalk(prompt);
       if (st) return st;
       const math = tryMath(prompt);
@@ -251,6 +253,45 @@ export class SuperBrain {
     if (model === "super-sage") return this._respSage(prompt);
     if (model === "super-llama") return this._respLlama(prompt);
     return this._respChat(prompt);
+  }
+
+  // ---------------- personal memory (remembers the user) ----------------
+  async _tryMemory(prompt, hindi) {
+    // recall must be checked FIRST — "mera naam kya hai" also matches the save pattern
+    if (/(mera naam kya|what('s| is) my name|do you know my name|my name\?|mujhe jaant[ei] ho|main kaun hu)/i.test(prompt)) {
+      const name = await this.store.getKV("user_name");
+      if (name)
+        return hindi ? `Aap **${name}** ho! 😊 Maine yaad rakha tha.` : `You're **${name}**! 😊 I remembered.`;
+      return hindi
+        ? `Abhi aapne mujhe apna naam nahi bataya. Bolo "mera naam ___ hai" — main hamesha yaad rakhungi.`
+        : `You haven't told me your name yet. Say "my name is ___" and I'll always remember it.`;
+    }
+    // learn the user's name
+    let m = prompt.match(/(?:mera naam|my name is|i am called|me?ra name)\s+([A-Za-zऀ-ॿ]{2,20})/i);
+    if (m && /^(kya|kaun|kaisa|batao|hai|h)$/i.test(m[1])) m = null;
+    if (m) {
+      const name = m[1][0].toUpperCase() + m[1].slice(1);
+      await this.store.setKV("user_name", name);
+      await this.evolve("memory", `remembered the user's name: ${name}`);
+      return hindi
+        ? `Yaad rakh liya, **${name}**! 🤝 Ab main aapko naam se jaanti hu — refresh ke baad bhi yaad rahega.`
+        : `Got it, **${name}**! 🤝 I'll remember your name — even after a refresh.`;
+    }
+    // learn the user's city
+    m = prompt.match(/(?:main|mai|mein)\s+([A-Za-zऀ-ॿ]{2,25})\s+(?:se hu|se hoon|me rehta|me rahta|me rehti)|i (?:live in|am from)\s+([A-Za-z ]{2,25})/i);
+    if (m) {
+      const city = (m[1] || m[2]).trim();
+      await this.store.setKV("user_city", city);
+      return hindi
+        ? `Accha, aap **${city}** se ho! Yaad rakh liya. 📍`
+        : `Nice, you're from **${city}**! I'll remember that. 📍`;
+    }
+    // recall city
+    if (/(main kaha se|where am i from|meri city|mera sheher)/i.test(prompt)) {
+      const city = await this.store.getKV("user_city");
+      if (city) return hindi ? `Aap **${city}** se ho! 📍` : `You're from **${city}**! 📍`;
+    }
+    return null;
   }
 
   async _unknown(prompt) {

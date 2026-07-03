@@ -26,12 +26,16 @@ IndexedDB, so it survives refreshes and keeps growing each visit. A `.nojekyll`
 file is included so Pages serves the `assets/` folder untouched.
 
 ### 🧩 Real Brain — an actual LLM in your browser (no API!)
-Pick **Real Brain** in the sidebar: it downloads a real model **once**
-(Qwen 2.5 0.5B ~350 MB, or Meta **Llama 3.2 1B** ~880 MB) from the public
-MLC/WebLLM CDN, caches it in the browser, and runs it locally on your GPU via
-WebGPU. Nothing ever leaves your device — no API key, no server. Streaming
-replies, remembers the conversation, writes code in any language, understands
-Hindi. Needs a recent Chrome/Edge (desktop or Android) or Safari 26+.
+Pick **Real Brain** in the sidebar: it downloads a real model **once** from
+the public MLC/WebLLM CDN, caches it in the browser, and runs it locally on
+your GPU via WebGPU. Nothing ever leaves your device — no API key, no server.
+Five models to choose from: SmolLM2 360M (~270 MB), Qwen 2.5 0.5B (~350 MB),
+**Meta Llama 3.2 1B** (~880 MB), Qwen 2.5 1.5B (~1.6 GB), Llama 3.2 3B
+(~2.3 GB). After the first load it's **cached and auto-loads on every visit**
+(the app also requests persistent storage so the browser won't evict it).
+Streaming replies, remembers the conversation, writes code in any language,
+understands Hindi. Needs a recent Chrome/Edge (desktop or Android) or
+Safari 26+.
 
 ### ✍️ It actually writes code now
 A built-in code generator handles real requests — e.g.

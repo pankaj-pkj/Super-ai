@@ -1,25 +1,60 @@
 # 🧠 Super AI — Self-Training Mind
 
-A **fully self-contained AI website**. No OpenAI, no external AI API, no dependencies —
-pure Python stdlib. The mind trains itself, harvests knowledge from GitHub and the web,
+A **fully self-contained AI**. No OpenAI, no external AI API, no build step, no
+dependencies. The mind trains itself, harvests knowledge from GitHub and the web,
 learns from every conversation, and keeps making itself more powerful forever.
 
-## ⚡ Quick start
+It ships in **two forms** from the same repo:
+
+| | Runs where | Persistence | Backend |
+|---|---|---|---|
+| **Browser app** (`index.html` + `assets/`) | 100% in the browser — perfect for **GitHub Pages** | IndexedDB | none |
+| **Python app** (`server.py` + `superai/`) | any machine with Python 3 | SQLite | stdlib HTTP server |
+
+## 🌐 Deploy free on GitHub Pages (no server, no VPS)
+
+The browser app needs zero backend — ideal while you don't have a VPS yet.
+
+1. Push this repo to GitHub.
+2. **Settings → Pages → Build and deployment → Source: "Deploy from a branch"**.
+3. Pick your branch (e.g. `main`) and folder **`/ (root)`**, then **Save**.
+4. Open `https://<user>.github.io/<repo>/` — Super AI boots, seeds its
+   built-in knowledge, and starts learning 24×7 in your browser.
+
+Everything (knowledge, neural weights, token usage) is saved in the browser's
+IndexedDB, so it survives refreshes and keeps growing each visit. A `.nojekyll`
+file is included so Pages serves the `assets/` folder untouched.
+
+### What runs in the browser
+- **~45 built-in knowledge entries** across 20+ languages, so it answers real
+  code questions immediately (Python, JavaScript, TypeScript, Java, C, C++, C#,
+  Go, Rust, Ruby, PHP, Swift, Kotlin, SQL, HTML, CSS, Bash, R, plus DSA, Git,
+  REST, ML concepts).
+- **LlamaLite** neural model (RMSNorm + SiLU, char-level) training from scratch
+  in pure JS with manual backprop — chunked so the UI never freezes.
+- **24×7 harvester**: while the tab is open it scrapes GitHub (top repos per
+  language) and Wikipedia (CORS-friendly), resolves a curiosity queue of things
+  users asked but it didn't know, and retrains the neural model.
+- **Daily token limits** per user with a 5-model registry, each model a
+  different token cost.
+- **English + Hindi** UI (🌐 toggle).
+
+## ⚡ Python version (optional, for a real server)
 
 ```bash
-python3 server.py
-# open http://localhost:8000
-```
-
-That's it. No `pip install`, no API keys, no config.
-
-Options:
-
-```bash
-python3 server.py --port 9000            # custom port
+python3 server.py            # open http://localhost:8000
+python3 server.py --port 9000
 python3 server.py --limit 50000          # daily token limit per user
 python3 server.py --harvest-interval 300 # self-learning every 5 min
 python3 server.py --no-harvest           # disable autonomous learning
+```
+
+No `pip install`, no API keys, no config.
+
+## 🧪 Tests
+
+```bash
+node tests/core.test.mjs     # browser-AI core (retrieval, neural, tokens, feedback)
 ```
 
 ## ✨ Features
@@ -103,11 +138,20 @@ Paste any URL (article, docs, GitHub README, raw code file) into
 
 ## 📁 Files
 
+**Browser app (GitHub Pages):**
+- `index.html` — the full UI (entry point for Pages)
+- `assets/js/core.js` — vocab, tokenizer, helpers
+- `assets/js/store.js` — IndexedDB persistence (+ in-memory store for tests)
+- `assets/js/llamalite.js` — LlamaLite neural model in pure JS (manual backprop)
+- `assets/js/knowledge.js` — built-in multi-language knowledge base + i18n
+- `assets/js/brain.js` — the mind: retrieval, markov, model routing
+- `assets/js/harvester.js` — 24×7 in-browser self-learning loop
+- `assets/js/tokens.js` — daily token limits
+- `assets/js/app.js` — UI wiring
+- `tests/core.test.mjs` — Node test suite
+
+**Python app (optional server):**
 - `server.py` — web server + API
-- `superai/brain.py` — the mind: retrieval, markov, model routing
-- `superai/trainer.py` — LlamaLite neural model (pure-Python backprop)
-- `superai/harvester.py` — autonomous self-learning loop
-- `superai/tokens.py` — daily token limits
-- `superai/state.py` — SQLite persistence
-- `static/index.html` — the full UI
+- `superai/*.py` — brain, LlamaLite trainer, harvester, tokens, SQLite state
+- `static/index.html` — server UI
 - `ai.py` — legacy Freedom AI REPL (original prototype)

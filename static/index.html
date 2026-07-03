@@ -445,7 +445,7 @@ async function refreshEvolution(){
 function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
 function md(s){
   let h = esc(s);
-  h = h.replace(/```([\s\S]*?)```/g, (_,c)=>`<pre>${c.trim()}</pre>`);
+  h = h.replace(/```([\s\S]*?)```/g, (_,c)=>`<pre>${c.replace(/^[ \t]*[a-z0-9+#]{1,12}\r?\n/i,'').trim()}</pre>`);
   h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
   h = h.replace(/_([^_]{3,120})_/g, '<em>$1</em>');
   h = h.replace(/^• /gm, '&bull; ');

@@ -25,6 +25,24 @@ Everything (knowledge, neural weights, token usage) is saved in the browser's
 IndexedDB, so it survives refreshes and keeps growing each visit. A `.nojekyll`
 file is included so Pages serves the `assets/` folder untouched.
 
+### 🧩 Real Brain — an actual LLM in your browser (no API!)
+Pick **Real Brain** in the sidebar: it downloads a real model **once**
+(Qwen 2.5 0.5B ~350 MB, or Meta **Llama 3.2 1B** ~880 MB) from the public
+MLC/WebLLM CDN, caches it in the browser, and runs it locally on your GPU via
+WebGPU. Nothing ever leaves your device — no API key, no server. Streaming
+replies, remembers the conversation, writes code in any language, understands
+Hindi. Needs a recent Chrome/Edge (desktop or Android) or Safari 26+.
+
+### ✍️ It actually writes code now
+A built-in code generator handles real requests — e.g.
+*"Write a Python function called find_duplicates that returns duplicate
+strings with their counts"* produces exactly that function, working, with the
+name you asked for. 20 templates × Python/JavaScript/HTML (fibonacci,
+palindrome, primes, sorting, binary search, email validation, calculator,
+todo app, login page, fetch API, …), plus safe **math evaluation**
+("56*89 kitna hoga?" → 4984) and small talk — **in English and
+Hindi/Hinglish** ("palindrome check karne ka code banao" works).
+
 ### What runs in the browser
 - **~45 built-in knowledge entries** across 20+ languages, so it answers real
   code questions immediately (Python, JavaScript, TypeScript, Java, C, C++, C#,

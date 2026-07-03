@@ -6,6 +6,7 @@ import { TokenBank } from "./tokens.js";
 import { Harvester } from "./harvester.js";
 import { I18N } from "./knowledge.js";
 import { escapeHtml } from "./core.js";
+import { RealBrain, BRAIN_MODELS } from "./realbrain.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -20,6 +21,19 @@ let lang = localStorage.getItem("superai_lang") || "en";
 let busy = false;
 
 let store, brain, bank, harvester;
+const realBrain = new RealBrain();
+
+// ---------------- UI zoom (mobile-friendly, guaranteed to work) ----------------
+let uiScale = parseFloat(localStorage.getItem("superai_zoom") || "1");
+function applyZoom() {
+  document.body.style.zoom = uiScale;
+  localStorage.setItem("superai_zoom", String(uiScale));
+}
+window.uiZoom = function (delta) {
+  uiScale = Math.min(1.6, Math.max(0.7, Math.round((uiScale + delta) * 100) / 100));
+  applyZoom();
+};
+applyZoom();
 
 // ---------------- boot ----------------
 (async function boot() {
@@ -87,7 +101,11 @@ function selectModel(id) {
   document.querySelectorAll(".model").forEach((el, i) =>
     el.classList.toggle("active", Object.keys(MODELS)[i] === id));
   updateTopbar();
-  toast(`→ ${MODELS[id].name}`);
+  if (id === "super-brain" && !realBrain.ready) {
+    openBrainModal();
+  } else {
+    toast(`→ ${MODELS[id].name}`);
+  }
 }
 function updateTopbar() {
   const m = MODELS[currentModel];
@@ -150,15 +168,19 @@ async function refreshEvolution() {
 
 // ---------------- chat ----------------
 function md(s) {
+  // protect code blocks first so inline rules can't mangle code (underscores!)
+  const codes = [];
   let h = escapeHtml(s);
-  h = h.replace(/```([\s\S]*?)```/g, (_, c) => {
+  h = h.replace(/```([\s\S]*?)(```|$)/g, (_, c) => {
     // drop a leading bare language hint (```python / ```sql / ```javascript)
-    const code = c.replace(/^[ \t]*[a-z0-9+#]{1,12}\r?\n/i, "").trim();
-    return `<pre>${code}</pre>`;
+    codes.push(c.replace(/^[ \t]*[a-z0-9+#]{1,12}\r?\n/i, "").trim());
+    return "" + (codes.length - 1) + "";
   });
   h = h.replace(/`([^`]+)`/g, "<code>$1</code>");
-  h = h.replace(/_([^_]{3,160})_/g, "<em>$1</em>");
-  h = h.replace(/^• /gm, "&bull; ");
+  h = h.replace(/\*\*([^*\n]{1,200})\*\*/g, "<b>$1</b>");
+  h = h.replace(/(^|[\s(])_([^_\n]{3,160})_(?=$|[\s.,;:)!?])/gm, "$1<em>$2</em>");
+  h = h.replace(/^[•*-] /gm, "&bull; ");
+  h = h.replace(/(\d+)/g, (_, i) => `<pre>${codes[+i]}</pre>`);
   return h;
 }
 function addMsg(role, html) {
@@ -195,7 +217,28 @@ window.send = async function () {
     }
 
     const t0 = performance.now();
-    const response = await brain.respond(text, currentModel);
+    let response;
+    if (currentModel === "super-brain") {
+      if (!realBrain.ready) {
+        typing.remove();
+        openBrainModal();
+        addMsg("ai", "🧩 " + (lang === "hi"
+          ? "Pehle Real Brain load karo — one-time download, phir sab kuch aapke browser me hi chalega (bina API ke)."
+          : "Load the Real Brain first — one-time download, then everything runs inside your browser (no API)."));
+        busy = false; $("sendBtn").disabled = false; return;
+      }
+      // stream tokens live into the bubble
+      typing.remove();
+      const m = addMsg("ai", "");
+      const bubble = m.querySelector(".bubble");
+      response = await realBrain.chat(text, (partial) => {
+        bubble.innerHTML = md(partial);
+        $("chat").scrollTop = $("chat").scrollHeight;
+      });
+      m.remove(); // re-added below with meta, keeps the code path uniform
+    } else {
+      response = await brain.respond(text, currentModel);
+    }
     const latency = Math.round(performance.now() - t0);
     const cost = bank.costOf(text, response, currentModel);
     await bank.spend(userId, cost);
@@ -265,6 +308,52 @@ window.trainNeural = async function () {
 window.selfImprove = async function () {
   toast("⚡ Self-improvement cycle: GitHub + curiosity + neural training…");
   harvester.cycle().then(() => { refreshStats(); refreshEvolution(); });
+};
+
+// ---------------- Real Brain modal ----------------
+function openBrainModal() {
+  const box = $("brainModels");
+  if (!realBrain.supported()) {
+    box.innerHTML = `<p style="color:var(--bad);font-size:13px;line-height:1.6">⚠️ ${lang === "hi"
+      ? "Is browser me WebGPU nahi hai. Latest <b>Chrome/Edge</b> (desktop ya Android) ya Safari 26+ use karo — phir yahan asli Llama/Qwen LLM chalega."
+      : "WebGPU isn't available in this browser. Use a recent <b>Chrome/Edge</b> (desktop or Android) or Safari 26+ to run a real Llama/Qwen LLM here."}</p>`;
+    $("brainGo").style.display = "none";
+  } else {
+    box.innerHTML = BRAIN_MODELS.map((m, i) => `
+      <label class="brain-opt">
+        <input type="radio" name="brainModel" value="${m.id}" ${i === 0 ? "checked" : ""}>
+        <span><b>${m.label}</b> <span class="pill cost">${m.size}</span><br>
+        <small>${m.desc}</small></span>
+      </label>`).join("");
+    $("brainGo").style.display = "";
+  }
+  $("brainProgress").style.display = "none";
+  $("brainOverlay").classList.add("show");
+}
+window.openBrainModal = openBrainModal;
+window.closeBrainModal = function () { $("brainOverlay").classList.remove("show"); };
+
+window.loadRealBrain = async function () {
+  const sel = document.querySelector('input[name="brainModel"]:checked');
+  if (!sel) return;
+  const btn = $("brainGo");
+  btn.disabled = true;
+  const prog = $("brainProgress");
+  prog.style.display = "block";
+  try {
+    await realBrain.load(sel.value, (r) => {
+      const pct = Math.round((r.progress || 0) * 100);
+      $("brainBar").style.width = pct + "%";
+      $("brainStatus").textContent = (r.text || "").slice(0, 90) || `${pct}%`;
+    });
+    window.closeBrainModal();
+    toast("🧩 Real Brain ready — " + sel.value.split("-q4")[0], "good");
+    brain.evolve("real-brain", `loaded ${sel.value} via WebLLM (local, no API)`);
+    refreshEvolution();
+  } catch (e) {
+    $("brainStatus").textContent = "⚠️ " + e.message;
+  }
+  btn.disabled = false;
 };
 
 let toastTimer;

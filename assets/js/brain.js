@@ -4,14 +4,18 @@
 import { tokenize, splitSentences, STOP, nowSec } from "./core.js";
 import { LlamaLite } from "./llamalite.js";
 import { KB } from "./knowledge.js";
+import { isHindi, tryMath, trySmallTalk, tryCodeGen, codeFallback } from "./codegen.js";
 
 export const MODELS = {
-  "super-mini":  { name: "Super Mini",  task: "Fast replies, quick facts",                 cost: 1, icon: "⚡",  tier: "Fast" },
+  "super-brain": { name: "Real Brain",  task: "Real LLM (Llama/Qwen) inside your browser — no API", cost: 3, icon: "🧩", tier: "LLM" },
   "super-chat":  { name: "Super Chat",  task: "General conversation & everyday questions",  cost: 2, icon: "💬", tier: "Balanced" },
-  "super-llama": { name: "Super Llama", task: "Raw neural generation (self-trained model)", cost: 3, icon: "🦙", tier: "Neural" },
-  "super-coder": { name: "Super Coder", task: "Code help across many languages",           cost: 4, icon: "👨‍💻", tier: "Specialist" },
+  "super-coder": { name: "Super Coder", task: "Writes & explains code, many languages",     cost: 4, icon: "👨‍💻", tier: "Specialist" },
+  "super-mini":  { name: "Super Mini",  task: "Fast replies, quick facts",                 cost: 1, icon: "⚡",  tier: "Fast" },
   "super-sage":  { name: "Super Sage",  task: "Deep research & multi-source synthesis",     cost: 6, icon: "🧠", tier: "Heavy" },
+  "super-llama": { name: "Super Llama", task: "Raw output of the tiny self-trained net (experimental)", cost: 3, icon: "🦙", tier: "Neural" },
 };
+
+const KB_VERSION = "2";
 
 const GREETING_RE = /^\s*(hi|hii+|hello|hey|namaste|namaskar|yo|hola|salaam|assalam)\b/i;
 const IDENTITY_RE = /\b(who are you|tum kaun|kaun ho|what are you|about you|aap kaun)\b/i;
@@ -34,15 +38,19 @@ export class SuperBrain {
     await this.llama.loadCheckpoint();
     this.strategy = await this.store.getJSON("strategy", this.strategy);
     this.evolutionCycle = parseInt(await this.store.getKV("evolution_cycle", "0")) || 0;
-    // seed the built-in knowledge base once
-    if (!(await this.store.getKV("kb_seeded"))) {
+    // seed the built-in knowledge base (versioned: re-seeds new entries on upgrade)
+    if ((await this.store.getKV("kb_seeded")) !== KB_VERSION) {
+      let added = 0;
       for (const e of KB) {
+        const src = `kb:${e.lang}:${e.title}`;
+        if (await this.store.hasSource(src)) continue;
         // answer stays clean; trigger keywords ride in the (indexed) title
-        await this.learnText(`kb:${e.lang}:${e.title}`, `${e.title} · ${e.q}`,
+        await this.learnText(src, `${e.title} · ${e.q}`,
           e.a, e.lang === "CS" ? "text" : "code", true);
+        added++;
       }
-      await this.store.setKV("kb_seeded", "1");
-      await this.evolve("boot", `seeded ${KB.length} built-in knowledge entries`);
+      await this.store.setKV("kb_seeded", KB_VERSION);
+      if (added) await this.evolve("boot", `seeded ${added} built-in knowledge entries (v${KB_VERSION})`);
     }
     await this._rebuild();
   }
@@ -121,17 +129,24 @@ export class SuperBrain {
   }
 
   // ---------------- retrieval ----------------
+  // Returns [score, row, coverage] where coverage = fraction of the query's
+  // content words that this sentence actually matches. Low coverage answers
+  // are garbage mash-ups — callers must gate on it.
   _scoreSentences(query, kind = null, top = 6) {
-    let qWords = tokenize(query).filter((w) => !STOP.has(w));
-    if (!qWords.length) qWords = tokenize(query);
+    let qWords = [...new Set(tokenize(query).filter((w) => !STOP.has(w)))];
+    if (!qWords.length) qWords = [...new Set(tokenize(query))];
     if (!qWords.length) return [];
     const nSents = Math.max(1, this.sentById.size);
     const scores = new Map();
+    const matched = new Map(); // sid -> count of distinct query words present
     for (const w of qWords) {
       const ids = this.index.get(w);
       if (!ids) continue;
       const idf = Math.log(1 + nSents / (1 + (this.docFreq.get(w) || 0)));
-      for (const sid of ids) scores.set(sid, (scores.get(sid) || 0) + idf);
+      for (const sid of ids) {
+        scores.set(sid, (scores.get(sid) || 0) + idf);
+        matched.set(sid, (matched.get(sid) || 0) + 1);
+      }
     }
     const ranked = [];
     for (const [sid, sc0] of scores) {
@@ -141,10 +156,16 @@ export class SuperBrain {
       if (kind && row.kind !== kind) sc *= 0.5;
       if (kind && row.kind === kind) sc *= 1.4;
       sc /= Math.sqrt(1 + row.sent.length / 200);
-      ranked.push([sc, row]);
+      const coverage = (matched.get(sid) || 0) / qWords.length;
+      ranked.push([sc * (0.4 + coverage), row, coverage]);
     }
     ranked.sort((a, b) => b[0] - a[0]);
     return ranked.slice(0, top);
+  }
+
+  // is the best hit actually about the question?
+  _relevant(hits, minCoverage = 0.45) {
+    return hits.length > 0 && hits[0][2] >= minCoverage;
   }
 
   _markovRide(seedWords, maxWords = 38) {
@@ -188,28 +209,45 @@ export class SuperBrain {
   async respond(prompt, model) {
     model = MODELS[model] ? model : "super-chat";
     prompt = prompt.trim();
+    const hindi = isHindi(prompt);
 
     if (GREETING_RE.test(prompt)) {
       const docs = await this.store.docCount();
-      return pick([
-        `Hello! I am Super AI — a self-training mind running entirely in your browser. I've learned from ${docs} sources so far. Ask me anything or teach me something new.`,
-        `Namaste! Super AI here. I know many programming languages out of the box and I keep learning 24×7. What shall we build?`,
-        `Hey! Switch models in the sidebar for coding, research, or raw neural generation. Each has its own token cost.`,
-      ]);
+      return hindi
+        ? pick([
+            `Namaste! 🙏 Main Super AI hu — poori tarah aapke browser me chalne wali self-training mind. Ab tak ${docs} sources se seekh chuki hu. Code chahiye, sawal hai, ya kuch sikhana hai?`,
+            `Hello ji! Kuch bhi pucho — code likhwa lo, math karwa lo, ya 🧩 Real Brain select karke asli LLM se baat karo (bina API ke!).`,
+          ])
+        : pick([
+            `Hello! I am Super AI — a self-training mind running entirely in your browser. I've learned from ${docs} sources so far. Ask me anything or teach me something new.`,
+            `Hey! I can write code, do math, and answer programming questions. Pick 🧩 Real Brain in the sidebar to chat with a real LLM running locally — no API.`,
+          ]);
     }
 
     if (IDENTITY_RE.test(prompt)) {
       const st = this.llama.stats();
       const docs = await this.store.docCount();
       const sents = await this.store.sentenceCount();
-      return `I am Super AI — a fully self-contained mind with no external API. I run 100% in your browser, persist my knowledge in IndexedDB, and keep learning 24×7. So far I've read ${docs} documents (${sents} sentences), trained my own Llama-style neural model for ${st.steps_trained} steps, and evolved ${this.evolutionCycle} times. I harvest knowledge from GitHub and the web on my own, and I learn from every chat — including this one.`;
+      return hindi
+        ? `Main **Super AI** hu — bina kisi external API ke, 100% aapke browser me. Ab tak ${docs} documents (${sents} sentences) padh chuki hu, apna neural model ${st.steps_trained} steps train kiya hai, aur ${this.evolutionCycle} baar evolve hui hu. GitHub aur web se khud seekhti hu, aur har chat se bhi — is wali se bhi. 🧩 Real Brain select karo to asli Llama/Qwen LLM bhi mere andar chalega.`
+        : `I am Super AI — a fully self-contained mind with no external API. I run 100% in your browser, persist my knowledge in IndexedDB, and keep learning 24×7. So far I've read ${docs} documents (${sents} sentences), trained my own neural model for ${st.steps_trained} steps, and evolved ${this.evolutionCycle} times. Pick the 🧩 Real Brain to run an actual Llama/Qwen LLM inside me.`;
+    }
+
+    // universal skills first (except raw-neural model): small talk, math, code writing
+    if (model !== "super-llama") {
+      const st = trySmallTalk(prompt);
+      if (st) return st;
+      const math = tryMath(prompt);
+      if (math) return math;
+      const code = tryCodeGen(prompt);
+      if (code) return code;
     }
 
     // auto-route obvious code questions to the coder path even on chat model
     const codey = CODE_HINT_RE.test(prompt);
 
     if (model === "super-mini") return this._respMini(prompt);
-    if (model === "super-coder" || (model === "super-chat" && codey)) return this._respCoder(prompt);
+    if (model === "super-coder" || codey) return this._respCoder(prompt);
     if (model === "super-sage") return this._respSage(prompt);
     if (model === "super-llama") return this._respLlama(prompt);
     return this._respChat(prompt);
@@ -217,55 +255,52 @@ export class SuperBrain {
 
   async _unknown(prompt) {
     const topic = await this._queueCuriosity(prompt);
-    return `I don't know enough about that yet — but I just added it to my curiosity queue ("${topic}") so my 24×7 self-learning loop will research it from Wikipedia and GitHub. You can also teach me instantly with the "Teach from URL" button.`;
+    // a code request deserves the honest code answer, not a research promise
+    const cf = codeFallback(prompt);
+    if (cf) return cf;
+    return isHindi(prompt)
+      ? `Iske baare me abhi mujhe poora nahi pata — maine ise apni curiosity queue me daal diya hai ("${topic}"), mera 24×7 self-learning loop Wikipedia aur GitHub se research karega. Aap "Teach from URL" se turant bhi sikha sakte ho, ya 🧩 Real Brain load karo — wo turant jawab de dega.`
+      : `I don't know enough about that yet — I've added it to my curiosity queue ("${topic}") so my 24×7 self-learning loop will research it from Wikipedia and GitHub. You can also teach me instantly with "Teach from URL", or load the 🧩 Real Brain for an immediate answer.`;
   }
 
   async _respMini(prompt) {
     const hits = this._scoreSentences(prompt, null, 1);
-    return hits.length ? hits[0][1].sent : this._unknown(prompt);
+    return this._relevant(hits) ? hits[0][1].sent : this._unknown(prompt);
   }
 
   async _respChat(prompt) {
     const hits = this._scoreSentences(prompt, null, 3);
-    if (!hits.length) return this._unknown(prompt);
+    if (!this._relevant(hits)) return this._unknown(prompt);
     const parts = [hits[0][1].sent];
-    if (hits.length > 1 && Math.random() < this.strategy.retrieval / 2) parts.push(hits[1][1].sent);
-    if (Math.random() < this.strategy.markov / 2) {
-      const ride = this._markovRide(tokenize(prompt));
-      if (ride && ride.length > 30) parts.push(ride);
-    }
+    // only add a second sentence if it's also genuinely on-topic
+    if (hits.length > 1 && hits[1][2] >= 0.45 && Math.random() < this.strategy.retrieval / 2)
+      parts.push(hits[1][1].sent);
     const src = hits[0][1].title || hits[0][1].source;
     return `${parts.join(" ")}\n\n_learned from: ${src}_`;
   }
 
   async _respCoder(prompt) {
     const hits = this._scoreSentences(prompt, "code", 5);
-    const codeHits = hits.filter((h) => h[1].kind === "code");
+    if (!this._relevant(hits)) return this._unknown(prompt);
+    const codeHits = hits.filter((h) => h[1].kind === "code" && h[2] >= 0.45);
     if (codeHits.length) {
       const best = codeHits[0][1];
-      const related = codeHits.slice(1, 3).map((h) => `- ${h[1].sent.slice(0, 150)}`).join("\n");
-      let out = `${best.sent}\n\n_source: ${best.title || best.source}_`;
-      if (related) out += `\n\nRelated patterns I know:\n${related}`;
-      return out;
+      return `${best.sent}\n\n_source: ${best.title || best.source}_`;
     }
-    if (hits.length) return `${hits[0][1].sent}\n\n_I haven't harvested exact code for this yet — my GitHub learner is on it. Ask again after the next learning cycle._`;
-    return this._unknown(prompt);
+    return `${hits[0][1].sent}\n\n_source: ${hits[0][1].title || hits[0][1].source}_`;
   }
 
   async _respSage(prompt) {
-    const hits = this._scoreSentences(prompt, null, 6);
-    if (!hits.length) return this._unknown(prompt);
+    const hits = this._scoreSentences(prompt, null, 6).filter((h) => h[2] >= 0.4);
+    if (!this._relevant(hits, 0.45)) return this._unknown(prompt);
     const sources = [];
-    const lines = hits.slice(0, 5).map(([, row]) => {
+    const lines = hits.slice(0, 4).map(([, row]) => {
       const src = row.title || row.source;
       if (!sources.includes(src)) sources.push(src);
       return `• ${row.sent}`;
     });
-    let out = "Deep synthesis from my knowledge base:\n\n" + lines.join("\n");
-    const synth = this._markovRide(tokenize(prompt), 28);
-    if (synth && synth.length > 30) out += `\n\nMy own synthesis: ${synth}`;
-    out += `\n\n_sources: ${sources.slice(0, 4).join(", ")}_`;
-    return out;
+    return "Deep synthesis from my knowledge base:\n\n" + lines.join("\n") +
+      `\n\n_sources: ${sources.slice(0, 4).join(", ")}_`;
   }
 
   async _respLlama(prompt) {

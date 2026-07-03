@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=6.0, user-scalable=yes">
 <title>Super AI — Self-Training Mind (runs in your browser)</title>
 <meta name="description" content="A self-training AI that runs 100% in your browser. No server, no API keys. Daily token limits, task-specific models, learns 24×7.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E">
@@ -14,11 +14,11 @@
   --radius:14px; --grad:linear-gradient(135deg,#7c5cff 0%,#00d4ff 100%);
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%}
+html,body{height:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
   background:radial-gradient(1200px 800px at 80% -10%,#1a1440 0%,var(--bg) 55%);
   color:var(--text);overflow:hidden}
-.app{display:flex;height:100vh}
+.app{display:flex;height:100vh;height:100dvh}
 .sidebar{width:310px;min-width:310px;height:100%;overflow-y:auto;
   background:rgba(13,16,28,.85);backdrop-filter:blur(14px);
   border-right:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;gap:18px}
@@ -119,8 +119,12 @@ textarea{flex:1;background:none;border:none;outline:none;color:var(--text);resiz
 .toast.good{border-color:var(--good)}.toast.bad{border-color:var(--bad)}
 .limit-banner{display:none;margin:12px 8% 0;padding:12px 16px;border-radius:12px;background:rgba(255,92,122,.1);border:1px solid rgba(255,92,122,.4);font-size:13px;color:#ffb3c2}
 .limit-banner.show{display:block}
-.chip-lang{cursor:pointer;font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:4px 10px;background:var(--panel)}
+.chip-lang{cursor:pointer;font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:4px 10px;background:var(--panel);user-select:none}
 .chip-lang:hover{border-color:var(--accent);color:var(--text)}
+.brain-opt{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--border);border-radius:10px;cursor:pointer;font-size:13px;line-height:1.5}
+.brain-opt:hover{border-color:var(--accent)}
+.brain-opt input{margin-top:4px;accent-color:var(--accent)}
+.brain-opt small{color:var(--muted)}
 ::-webkit-scrollbar{width:8px;height:8px}
 ::-webkit-scrollbar-thumb{background:#252c48;border-radius:5px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -186,6 +190,8 @@ textarea{flex:1;background:none;border:none;outline:none;color:var(--text);resiz
         </div>
       </div>
       <div class="actions">
+        <span class="chip-lang" onclick="uiZoom(-0.1)" title="Zoom out">A−</span>
+        <span class="chip-lang" onclick="uiZoom(0.1)" title="Zoom in">A+</span>
         <span class="chip-lang" id="langToggle" onclick="toggleLang()">🌐 EN</span>
         <button class="btn" onclick="openTeach()">📚 <span data-i18n="teach">Teach from URL</span></button>
         <button class="btn" id="trainBtn" onclick="trainNeural()">🦙 <span data-i18n="train">Train Neural</span></button>
@@ -203,11 +209,11 @@ textarea{flex:1;background:none;border:none;outline:none;color:var(--text);resiz
           It knows many programming languages out of the box, harvests knowledge from GitHub &amp; the web,
           trains its own neural model, and learns from every chat. Pick a model on the left for your task.</p>
         <div class="chips">
-          <div class="chip" onclick="ask('Who are you?')">Who are you?</div>
-          <div class="chip" onclick="ask('How do I reverse a string in Python?')">Python string</div>
-          <div class="chip" onclick="ask('Explain Rust ownership and borrowing')">Rust ownership</div>
+          <div class="chip" onclick="ask('Write a function called find_duplicates that finds duplicate strings in a list')">Write code ✍️</div>
+          <div class="chip" onclick="ask('Palindrome check karne ka code banao')">Hindi me code 🇮🇳</div>
+          <div class="chip" onclick="ask('56 * 89 kitna hoga?')">Math 🧮</div>
           <div class="chip" onclick="ask('SQL JOIN two tables')">SQL JOIN</div>
-          <div class="chip" onclick="ask('What is Big-O complexity?')">Big-O</div>
+          <div class="chip" onclick="openBrainModal()">🧩 Load Real Brain</div>
         </div>
       </div>
     </div>
@@ -220,6 +226,24 @@ textarea{flex:1;background:none;border:none;outline:none;color:var(--text);resiz
       <div class="hint">Super AI improves itself 24×7 while this tab is open — GitHub harvesting, curiosity-driven learning &amp; neural training run in the background. Knowledge is saved in your browser.</div>
     </div>
   </main>
+</div>
+
+<div class="overlay" id="brainOverlay">
+  <div class="modal">
+    <h2>🧩 Real Brain — a real LLM in your browser</h2>
+    <p>Downloads a real AI model (Llama / Qwen) <b>once</b> from a public CDN, caches it in your browser,
+       and runs it locally on your device's GPU via WebGPU. <b>No API, no server, nothing leaves your device.</b>
+       Use Wi-Fi for the first download.</p>
+    <div id="brainModels" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"></div>
+    <div id="brainProgress" style="display:none;margin-bottom:14px">
+      <div class="bar"><div class="fill" id="brainBar" style="width:0%"></div></div>
+      <div id="brainStatus" style="font-size:11px;color:var(--muted);margin-top:6px">starting…</div>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="closeBrainModal()">Later</button>
+      <button class="btn primary" id="brainGo" onclick="loadRealBrain()">⬇ Download &amp; Load</button>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="teachOverlay">

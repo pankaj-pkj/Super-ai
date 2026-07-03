@@ -444,11 +444,14 @@ async function refreshEvolution(){
 /* ---------------- chat ---------------- */
 function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
 function md(s){
+  const codes = [];
   let h = esc(s);
-  h = h.replace(/```([\s\S]*?)```/g, (_,c)=>`<pre>${c.replace(/^[ \t]*[a-z0-9+#]{1,12}\r?\n/i,'').trim()}</pre>`);
+  h = h.replace(/```([\s\S]*?)(```|$)/g, (_,c)=>{ codes.push(c.replace(/^[ \t]*[a-z0-9+#]{1,12}\r?\n/i,'').trim()); return ''+(codes.length-1)+''; });
   h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
-  h = h.replace(/_([^_]{3,120})_/g, '<em>$1</em>');
-  h = h.replace(/^• /gm, '&bull; ');
+  h = h.replace(/\*\*([^*\n]{1,200})\*\*/g, '<b>$1</b>');
+  h = h.replace(/(^|[\s(])_([^_\n]{3,160})_(?=$|[\s.,;:)!?])/gm, '$1<em>$2</em>');
+  h = h.replace(/^[•*-] /gm, '&bull; ');
+  h = h.replace(/(\d+)/g, (_,i)=>`<pre>${codes[+i]}</pre>`);
   return h;
 }
 function addMsg(role, html){

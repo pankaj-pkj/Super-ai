@@ -104,4 +104,45 @@ const feed = await store.evolutionFeed();
 assert.ok(feed.length > 0);
 ok(`stats + evolution feed: ${feed.length} events, latest="${feed[0].event}"`);
 
+// ============ NEW: code generation ============
+const dup = await brain.respond(
+  "Write a Python function called find_duplicates that takes a list of strings and returns a dictionary with duplicate strings as keys and their occurrences as values",
+  "super-coder");
+assert.ok(dup.includes("def find_duplicates("), "generates the exact requested function");
+assert.ok(dup.includes("counts.get(item, 0) + 1"), "real working code");
+ok("codegen: find_duplicates generated correctly");
+
+const fibJs = await brain.respond("write fibonacci in javascript", "super-coder");
+assert.ok(fibJs.includes("function fibonacci(") && fibJs.includes("javascript"), "js fibonacci");
+ok("codegen: fibonacci in JavaScript");
+
+// Hindi code request + Hindi framing
+const hiCode = await brain.respond("palindrome check karne ka code banao", "super-chat");
+assert.ok(hiCode.includes("def is_palindrome(") || hiCode.includes("function is_palindrome("), "hindi request gives code");
+assert.ok(hiCode.includes("Kaise kaam karta hai") || hiCode.includes("aapka code"), "hindi framing");
+ok("codegen: Hindi/Hinglish request understood");
+
+// math
+const math = await brain.respond("56 * 89 kitna hoga?", "super-chat");
+assert.ok(math.includes("4984"), "math answer");
+ok(`math: ${math}`);
+
+// small talk
+const thx = await brain.respond("thank you!", "super-chat");
+assert.ok(thx.length > 10 && !thx.includes("curiosity queue"), "smalltalk works");
+const hiThx = await brain.respond("shukriya bhai", "super-chat");
+assert.ok(/Koi baat nahi/i.test(hiThx), "hindi smalltalk");
+ok("smalltalk: EN + Hinglish");
+
+// relevance gate: an off-topic query must NOT return a garbage mash-up
+const off = await brain.respond("mera pet dard kar raha hai kya karu", "super-sage");
+assert.ok(off.includes("curiosity") || off.includes("Real Brain") || off.includes("nahi pata"),
+  "irrelevant retrieval is gated: " + off.slice(0, 80));
+ok("relevance gate: no garbage mash-ups");
+
+// code fallback is honest and points to Real Brain
+const fb2 = await brain.respond("write a compiler for brainfuck in zig", "super-coder");
+assert.ok(fb2.includes("Real Brain"), "honest fallback suggests Real Brain");
+ok("code fallback honest");
+
 console.log(`\nALL ${pass} CHECKS PASSED`);

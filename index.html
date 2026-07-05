@@ -198,24 +198,24 @@ textarea{flex:1;background:none;border:none;outline:none;color:var(--text);resiz
 <div class="app">
   <aside class="sidebar" id="sidebar">
     <div class="logo">
-      <div class="orb">🧠</div>
+      <div class="orb">✦</div>
       <div>
         <h1>SUPER <span>AI</span></h1>
-        <div class="sub" data-i18n="tagline">self-training mind · runs 100% in your browser</div>
+        <div class="sub" data-i18n="tagline">by codian_studio</div>
       </div>
-    </div>
-
-    <div class="card">
-      <h3><span data-i18n="daily">Daily Tokens</span><span id="resetIn" style="letter-spacing:0;text-transform:none"></span></h3>
-      <div class="token-nums"><span class="big" id="tokRemaining">—</span><span class="lim">/ <span id="tokLimit">—</span></span></div>
-      <div class="bar"><div class="fill" id="tokBar"></div></div>
-      <div class="token-meta"><span id="tokUsed">0 used</span><span id="tokReqs">0 requests</span></div>
     </div>
 
     <button class="btn primary newchat" onclick="newChat()">✨ <span data-i18n="newchat">New Chat</span></button>
 
     <div class="card">
-      <h3 data-i18n="models">Models — pick per task</h3>
+      <h3><span data-i18n="daily">Daily Credits</span><span id="resetIn" style="letter-spacing:0;text-transform:none"></span></h3>
+      <div class="token-nums"><span class="big" id="tokRemaining">—</span><span class="lim">/ <span id="tokLimit">—</span></span></div>
+      <div class="bar"><div class="fill" id="tokBar"></div></div>
+      <div class="token-meta"><span id="tokUsed">0 used</span><span id="tokReqs">0 requests</span></div>
+    </div>
+
+    <div class="card">
+      <h3 data-i18n="models">Models</h3>
       <div id="modelList"></div>
     </div>
 
@@ -223,23 +223,7 @@ textarea{flex:1;background:none;border:none;outline:none;color:var(--text);resiz
       <h3><span data-i18n="history">Chats</span></h3>
       <div class="sess-list" id="sessionList"></div>
     </div>
-
-    <div class="card">
-      <h3><span data-i18n="stats">Mind Stats</span> <span class="live-dot" title="learning 24×7"></span></h3>
-      <div class="stat-grid">
-        <div class="stat"><div class="v" id="stDocs">—</div><div class="k" id="stDocsK">docs learned</div></div>
-        <div class="stat"><div class="v" id="stSents">—</div><div class="k" id="stSentsK">sentences</div></div>
-        <div class="stat"><div class="v" id="stEvo">—</div><div class="k" id="stEvoK">evolutions</div></div>
-        <div class="stat"><div class="v" id="stSteps">—</div><div class="k" id="stStepsK">neural steps</div></div>
-      </div>
-      <div class="loss-spark" id="lossSpark"></div>
-      <div class="spark-label">LlamaLite loss ↓ = smarter · <span id="stLoss">not trained</span></div>
-    </div>
-
-    <div class="card">
-      <h3 data-i18n="feed">Self-Improvement Feed</h3>
-      <div class="evo" id="evoFeed"><div class="e" id="bootMsg">booting the mind…</div></div>
-    </div>
+    <div id="bootMsg" style="display:none"></div>
   </aside>
 
   <main class="main">
@@ -256,10 +240,6 @@ textarea{flex:1;background:none;border:none;outline:none;color:var(--text);resiz
         <span class="chip-lang" onclick="uiZoom(-0.1)" title="Zoom out">A−</span>
         <span class="chip-lang" onclick="uiZoom(0.1)" title="Zoom in">A+</span>
         <span class="chip-lang" id="langToggle" onclick="toggleLang()">🌐 EN</span>
-        <button class="btn" onclick="openSwarm()" title="Sync minds between browsers">🌐 Swarm</button>
-        <button class="btn" onclick="openTeach()">📚 <span data-i18n="teach">Teach from URL</span></button>
-        <button class="btn" id="trainBtn" onclick="trainNeural()">🦙 <span data-i18n="train">Train Neural</span></button>
-        <button class="btn primary" onclick="selfImprove()">⚡ <span data-i18n="improve">Self-Improve Now</span></button>
         <div class="profile-chip" id="profileChip" onclick="doLogout()"></div>
       </div>
     </div>
@@ -268,17 +248,16 @@ textarea{flex:1;background:none;border:none;outline:none;color:var(--text);resiz
 
     <div class="chat" id="chat">
       <div class="welcome" id="welcome">
-        <div class="big-orb">🧠</div>
+        <div class="big-orb">✦</div>
         <h2><span data-i18n="welcome">Welcome to</span> <span>Super AI</span></h2>
-        <p data-i18n="intro">A fully self-contained AI that trains itself in your browser — no server, no API keys.
-          It knows many programming languages out of the box, harvests knowledge from GitHub &amp; the web,
-          trains its own neural model, and learns from every chat. Pick a model on the left for your task.</p>
+        <p data-i18n="intro">Your professional coding &amp; answering assistant by codian_studio.
+          Ask a question, get instant working code, or activate on-device intelligence for private answers.</p>
         <div class="chips">
-          <div class="chip" onclick="ask('Write a function called find_duplicates that finds duplicate strings in a list')">Write code ✍️</div>
+          <div class="chip" onclick="ask('Write a Telegram bot in python')">Telegram bot 🤖</div>
           <div class="chip" onclick="ask('Palindrome check karne ka code banao')">Hindi me code 🇮🇳</div>
-          <div class="chip" onclick="ask('56 * 89 kitna hoga?')">Math 🧮</div>
-          <div class="chip" onclick="ask('SQL JOIN two tables')">SQL JOIN</div>
-          <div class="chip" onclick="openBrainModal()">🧩 Load Real Brain</div>
+          <div class="chip" onclick="ask('Build a REST API with Flask')">Flask API</div>
+          <div class="chip" onclick="ask('Make a snake game')">Snake game 🐍</div>
+          <div class="chip" onclick="openBrainModal()">✦ Activate Neo</div>
         </div>
       </div>
     </div>
@@ -288,7 +267,7 @@ textarea{flex:1;background:none;border:none;outline:none;color:var(--text);resiz
         <textarea id="input" rows="1" placeholder="Message Super AI…" oninput="autosize(this)" onkeydown="onKey(event)"></textarea>
         <button class="send" id="sendBtn" onclick="send()">➤</button>
       </div>
-      <div class="hint">Super AI improves itself 24×7 while this tab is open — GitHub harvesting, curiosity-driven learning &amp; neural training run in the background. Knowledge is saved in your browser.</div>
+      <div class="hint" data-i18n="footer">Super AI by codian_studio · your coding &amp; answering companion</div>
     </div>
   </main>
 </div>
@@ -296,10 +275,10 @@ textarea{flex:1;background:none;border:none;outline:none;color:var(--text);resiz
 <!-- login screen -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-card">
-    <div class="orb">🧠</div>
+    <div class="orb">✦</div>
     <h1>SUPER <span>AI</span></h1>
-    <p class="sub2">Your personal self-training AI by <b>team codian_studio</b>.<br>
-       Sign in to get your daily tokens, saved chats &amp; a mind that remembers you.</p>
+    <p class="sub2">Your professional AI assistant by <b>codian_studio</b>.<br>
+       Sign in to save your chats, get daily credits &amp; a personalized experience.</p>
     <input id="loginName" placeholder="Your name" autocomplete="name">
     <input id="loginEmail" type="email" placeholder="Email address" autocomplete="email"
       onkeydown="if(event.key==='Enter')doEmailLogin()">
@@ -340,10 +319,10 @@ textarea{flex:1;background:none;border:none;outline:none;color:var(--text);resiz
 
 <div class="overlay" id="brainOverlay">
   <div class="modal">
-    <h2>🧩 Real Brain — a real LLM in your browser</h2>
-    <p>Downloads a real AI model (Llama / Qwen) <b>once</b> from a public CDN, caches it in your browser,
-       and runs it locally on your device's GPU via WebGPU. <b>No API, no server, nothing leaves your device.</b>
-       Use Wi-Fi for the first download.</p>
+    <h2>✦ Activate Codian Neo</h2>
+    <p>On-device intelligence for private, offline answers. Prepares <b>once</b> on your device and then
+       runs fully locally — <b>nothing ever leaves your device</b>. Use Wi-Fi the first time. Pick a size
+       that fits your device:</p>
     <div id="brainModels" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"></div>
     <div id="brainProgress" style="display:none;margin-bottom:14px">
       <div class="bar"><div class="fill" id="brainBar" style="width:0%"></div></div>

@@ -1,15 +1,20 @@
-# 🧠 Super AI — Self-Training Mind
+# Super AI — by codian_studio
 
-A **fully self-contained AI**. No OpenAI, no external AI API, no build step, no
-dependencies. The mind trains itself, harvests knowledge from GitHub and the web,
-learns from every conversation, and keeps making itself more powerful forever.
+A polished AI coding & answering product. It writes real code in any language,
+answers everyday questions, remembers you, and can run a real LLM privately on
+your device — **or** grow a knowledge base 24×7 on your own cPanel server.
 
-It ships in **two forms** from the same repo:
+Three ways to run it, mix and match:
 
-| | Runs where | Persistence | Backend |
-|---|---|---|---|
-| **Browser app** (`index.html` + `assets/`) | 100% in the browser — perfect for **GitHub Pages** | IndexedDB | none |
-| **Python app** (`server.py` + `superai/`) | any machine with Python 3 | SQLite | stdlib HTTP server |
+| | Runs where | What you get |
+|---|---|---|
+| **Browser app** (`index.html` + `assets/`) | 100% client-side (GitHub Pages or any static host) | code generation, memory, on-device LLM (Codian Neo), daily credits |
+| **cPanel backend** (`backend/`) | your PHP + MySQL hosting | real login, **24×7 server-side learning**, realtime web scraping, optional hosted LLM |
+| **Python app** (`server.py` + `superai/`) | any machine with Python 3 | the original stdlib server version |
+
+➡️ **Deploying on cPanel? Read [HOSTING.md](HOSTING.md)** — it covers the
+database, the 24×7 cron learner, Google login, and plugging in a powerful
+hosted LLM, plus how to train/improve it later.
 
 ## 🌐 Deploy free on GitHub Pages (no server, no VPS)
 

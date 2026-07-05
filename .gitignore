@@ -4,3 +4,4 @@ superai_state.db*
 *.db
 node_modules/
 tests/node_modules/
+backend/config.php

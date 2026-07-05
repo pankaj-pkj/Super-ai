@@ -4,43 +4,44 @@
 // downloaded ONCE from the public CDN, cached by the browser, and inference
 // runs locally on the GPU via WebGPU. Nothing is ever sent to any server.
 
+// Public premium names hide the underlying open models.
 export const BRAIN_MODELS = [
   {
     id: "SmolLM2-360M-Instruct-q4f16_1-MLC",
-    label: "SmolLM2 (360M) — Lite",
+    label: "Neo Lite",
     size: "~270 MB",
     desc: "Lightest — works on most phones",
   },
   {
     id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
-    label: "Qwen 2.5 (0.5B) — Fast",
+    label: "Neo Fast",
     size: "~350 MB",
-    desc: "Good balance for phones & quick answers",
+    desc: "Great balance for phones & quick answers",
   },
   {
     id: "Llama-3.2-1B-Instruct-q4f16_1-MLC",
-    label: "Llama 3.2 (1B) — Smart",
+    label: "Neo Standard",
     size: "~880 MB",
-    desc: "Meta's Llama brain — much better answers",
+    desc: "Noticeably better answers",
   },
   {
     id: "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC",
-    label: "Qwen 2.5 Coder (1.5B) — Best for CODE",
+    label: "Neo Coder — best for coding",
     size: "~1.4 GB",
-    desc: "Purpose-built for coding — writes Telegram bots, APIs, full programs",
+    desc: "Purpose-built for code — Telegram bots, APIs, full programs",
     coder: true,
   },
   {
     id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
-    label: "Qwen 2.5 (1.5B) — Smarter",
+    label: "Neo Pro",
     size: "~1.6 GB",
     desc: "Strong all-round — good laptops/PCs",
   },
   {
     id: "Llama-3.2-3B-Instruct-q4f16_1-MLC",
-    label: "Llama 3.2 (3B) — Best quality",
+    label: "Neo Max",
     size: "~2.3 GB",
-    desc: "Best answers — needs a PC with a real GPU",
+    desc: "Best quality — needs a PC with a real GPU",
   },
 ];
 

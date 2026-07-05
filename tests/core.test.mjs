@@ -136,13 +136,13 @@ ok("smalltalk: EN + Hinglish");
 
 // relevance gate: an off-topic query must NOT return a garbage mash-up
 const off = await brain.respond("mera pet dard kar raha hai kya karu", "super-sage");
-assert.ok(off.includes("curiosity") || off.includes("Real Brain") || off.includes("nahi pata"),
+assert.ok(off.includes("Codian Neo") || off.includes("context") || off.includes("rephrasing") || off.includes("alag tarike"),
   "irrelevant retrieval is gated: " + off.slice(0, 80));
 ok("relevance gate: no garbage mash-ups");
 
 // code fallback is honest and points to Real Brain
 const fb2 = await brain.respond("write a compiler for brainfuck in zig", "super-coder");
-assert.ok(fb2.includes("Real Brain"), "honest fallback suggests Real Brain");
+assert.ok(fb2.includes("Codian Neo"), "honest fallback suggests Codian Neo");
 ok("code fallback honest");
 
 // ============ NEW: multi-language codegen ============

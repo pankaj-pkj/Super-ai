@@ -57,3 +57,14 @@ export function secondsToResetUTC() {
 export function nowSec() {
   return Math.floor(Date.now() / 1000);
 }
+
+// Is this a phone / low-power device? Used to throttle heavy background work
+// so we never freeze a mobile browser.
+export function isMobileDevice() {
+  if (typeof navigator === "undefined") return false;
+  if (navigator.userAgentData?.mobile === true) return true; // only trust a positive
+  const ua = navigator.userAgent || "";
+  const mobileUA = /Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile|Silk/i.test(ua);
+  const touchFewCores = (navigator.maxTouchPoints || 0) > 0 && (navigator.hardwareConcurrency || 8) <= 4;
+  return mobileUA || touchFewCores;
+}

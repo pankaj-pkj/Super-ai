@@ -29,13 +29,34 @@ file is included so Pages serves the `assets/` folder untouched.
 Pick **Real Brain** in the sidebar: it downloads a real model **once** from
 the public MLC/WebLLM CDN, caches it in the browser, and runs it locally on
 your GPU via WebGPU. Nothing ever leaves your device — no API key, no server.
-Five models to choose from: SmolLM2 360M (~270 MB), Qwen 2.5 0.5B (~350 MB),
-**Meta Llama 3.2 1B** (~880 MB), Qwen 2.5 1.5B (~1.6 GB), Llama 3.2 3B
-(~2.3 GB). After the first load it's **cached and auto-loads on every visit**
-(the app also requests persistent storage so the browser won't evict it).
-Streaming replies, remembers the conversation, writes code in any language,
-understands Hindi. Needs a recent Chrome/Edge (desktop or Android) or
-Safari 26+.
+Six models to choose from:
+
+| Model | Size | Best for |
+|---|---|---|
+| SmolLM2 360M | ~270 MB | any phone |
+| Qwen 2.5 0.5B | ~350 MB | quick answers |
+| **Meta Llama 3.2 1B** | ~880 MB | better answers |
+| **Qwen 2.5 Coder 1.5B** | ~1.4 GB | **coding — Telegram bots, APIs, full programs** |
+| Qwen 2.5 1.5B | ~1.6 GB | strong all-round |
+| Llama 3.2 3B | ~2.3 GB | best quality (PC) |
+
+Once a Real Brain is loaded, **every text model** (Super Chat, Super Sage,
+Super Coder…) uses it — so they all get a real brain. After the first load
+it's cached and can auto-load on desktop. Streaming replies, remembers the
+conversation, writes code in any language, understands Hindi. Needs a recent
+Chrome/Edge (desktop or Android) or Safari 26+.
+
+### 📱 Mobile-safe (no more freezing)
+Heavy neural work never runs while the tab is in the background, pauses the
+instant you switch away, yields to the UI every few milliseconds, and runs a
+lighter/slower schedule on phones. Big model auto-download is **off by default
+and never triggers on mobile** — that was the old freeze cause. Measured main-
+thread stall during code generation: **~39 ms (smooth)**.
+
+### 💬 Chats & history
+A **New Chat** button starts a fresh conversation; every conversation is saved
+and listed in the sidebar — tap any one to reload it. Nothing is lost on
+refresh.
 
 ### ✍️ It actually writes code now
 A built-in code generator handles real requests — e.g.

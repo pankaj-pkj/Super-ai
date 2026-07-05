@@ -9,6 +9,7 @@ import { escapeHtml } from "./core.js";
 import { RealBrain, BRAIN_MODELS } from "./realbrain.js";
 import { Auth } from "./auth.js";
 import { exportBundle, importBundle, SwarmLink } from "./swarm.js";
+import { isMobileDevice } from "./core.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -18,6 +19,8 @@ let userId = auth.loggedIn ? auth.userId : "anonymous";
 let currentModel = localStorage.getItem("superai_model") || "super-chat";
 let lang = localStorage.getItem("superai_lang") || "en";
 let busy = false;
+let sessionId = localStorage.getItem("superai_session") || "s_" + Date.now().toString(36);
+localStorage.setItem("superai_session", sessionId);
 
 let store, brain, bank, harvester;
 const realBrain = new RealBrain();
@@ -101,9 +104,10 @@ function renderProfile() {
   $("input").focus();
 })();
 
-// bring back the last conversation so a refresh never wipes the chat
+// bring back the current conversation so a refresh never wipes the chat
 async function restoreHistory() {
-  const chats = await store.recentChats(12);
+  const chats = await store.recentChats(30, sessionId);
+  await renderSessions();
   if (!chats.length) return;
   for (const c of chats) {
     addMsg("user", md(c.prompt));
@@ -114,10 +118,58 @@ async function restoreHistory() {
       `<span class="fb" title="Good" onclick="feedback(this,${c.id},true)">👍</span>` +
       `<span class="fb" title="Bad" onclick="feedback(this,${c.id},false)">👎</span>`;
   }
-  const sep = document.createElement("div");
-  sep.className = "history-sep";
-  sep.textContent = lang === "hi" ? "— pichhli baatein upar, nayi shuru karo —" : "— previous conversation above —";
-  $("chat").appendChild(sep);
+  $("chat").scrollTop = $("chat").scrollHeight;
+}
+
+// sidebar list of past conversations
+async function renderSessions() {
+  const box = $("sessionList");
+  if (!box) return;
+  const sessions = await store.chatSessions(30);
+  box.innerHTML = "";
+  if (!sessions.length) {
+    box.innerHTML = `<div class="sess-empty">${lang === "hi" ? "abhi koi chat nahi" : "no chats yet"}</div>`;
+    return;
+  }
+  for (const s of sessions) {
+    const d = document.createElement("div");
+    d.className = "sess" + (s.id === sessionId ? " active" : "");
+    d.onclick = () => switchSession(s.id);
+    d.innerHTML = `<span class="sess-t">${escapeHtml(s.title || "Chat")}</span><span class="sess-n">${s.count}</span>`;
+    box.appendChild(d);
+  }
+}
+
+window.newChat = function () {
+  sessionId = "s_" + Date.now().toString(36);
+  localStorage.setItem("superai_session", sessionId);
+  document.querySelectorAll(".msg, .history-sep").forEach((el) => el.remove());
+  const chat = $("chat");
+  if (!$("welcome")) {
+    const w = document.createElement("div");
+    w.className = "welcome"; w.id = "welcome";
+    w.innerHTML = `<div class="big-orb">🧠</div><h2><span>${lang === "hi" ? "Nayi chat" : "New chat"}</span> — <span>Super AI</span></h2>
+      <p>${lang === "hi" ? "Kuch bhi poochho ya code mangwao — main yaad rakhungi." : "Ask anything or request code — I'll remember it."}</p>`;
+    chat.appendChild(w);
+  }
+  renderSessions();
+  $("input").focus();
+  toast(lang === "hi" ? "Nayi chat shuru ✨" : "New chat started ✨");
+};
+
+async function switchSession(sid) {
+  sessionId = sid;
+  localStorage.setItem("superai_session", sid);
+  document.querySelectorAll(".msg, .history-sep, #welcome").forEach((el) => el.remove());
+  const chats = await store.recentChats(40, sid);
+  for (const c of chats) {
+    addMsg("user", md(c.prompt));
+    const m = addMsg("ai", md(c.response));
+    const info = MODELS[c.model] || {};
+    m.querySelector(".meta").innerHTML =
+      `<span>${info.icon || ""} ${info.name || c.model}</span><span>⛁ ${c.tokens} tokens</span>`;
+  }
+  renderSessions();
   $("chat").scrollTop = $("chat").scrollHeight;
 }
 
@@ -128,7 +180,7 @@ async function autoLoadBrain() {
   const cfg = window.SUPERAI_CONFIG || {};
   // first visit: auto-download the small Real Brain in the background,
   // so every user gets a real LLM without clicking anything
-  if (!saved && cfg.AUTO_BRAIN_DOWNLOAD && realBrain.supported()
+  if (!saved && cfg.AUTO_BRAIN_DOWNLOAD && realBrain.supported() && !isMobileDevice()
       && !localStorage.getItem("superai_brain_optout")) {
     saved = cfg.AUTO_BRAIN_MODEL || "SmolLM2-360M-Instruct-q4f16_1-MLC";
     toast(lang === "hi"
@@ -371,15 +423,23 @@ window.send = async function () {
 
     const t0 = performance.now();
     let response, aiMsg;
-    if (currentModel === "super-brain") {
-      if (!realBrain.ready) {
-        typing.remove();
-        openBrainModal();
-        addMsg("ai", "🧩 " + (lang === "hi"
-          ? "Pehle Real Brain load karo — one-time download, phir sab kuch aapke browser me hi chalega (bina API ke)."
-          : "Load the Real Brain first — one-time download, then everything runs inside your browser (no API)."));
-        busy = false; $("sendBtn").disabled = false; return;
-      }
+    // When the Real Brain is loaded, EVERY text model borrows it (so Super Chat,
+    // Super Sage etc. get a real brain). Super Llama stays the raw tiny net.
+    // Identity/creator questions always answer locally (guaranteed codian_studio).
+    const CREATOR = /(who (made|created|built|are) you|kisne banaya|tum kaun|kaun ho|aap kaun|tumhe kisne)/i;
+    const useBrain = currentModel === "super-brain" ||
+      (realBrain.ready && currentModel !== "super-llama" && !CREATOR.test(text));
+
+    if (currentModel === "super-brain" && !realBrain.ready) {
+      typing.remove();
+      openBrainModal();
+      addMsg("ai", "🧩 " + (lang === "hi"
+        ? "Pehle Real Brain load karo — one-time download, phir sab kuch aapke browser me hi chalega (bina API ke)."
+        : "Load the Real Brain first — one-time download, then everything runs inside your browser (no API)."));
+      busy = false; $("sendBtn").disabled = false; return;
+    }
+
+    if (useBrain) {
       // stream into ONE bubble, throttled to ~12fps so big code never hangs the tab
       typing.remove();
       aiMsg = addMsg("ai", '<span class="caret"></span>');
@@ -408,8 +468,11 @@ window.send = async function () {
     const latency = Math.round(performance.now() - t0);
     const cost = bank.costOf(text, response, currentModel);
     await bank.spend(userId, cost);
-    const chatId = await store.logChat(userId, currentModel, text, response, cost);
-    brain.learnFromChat(text); // learn from the user (fire and forget)
+    const chatId = await store.logChat(userId, currentModel, text, response, cost, sessionId);
+    // learn from every conversation (the user is teaching it), then refresh history
+    await brain.learnFromChat(text);
+    if (useBrain && response) await brain.learnText(`brain:${Date.now()}`, "AI answer", response, "chat");
+    renderSessions();
 
     const meta = aiMsg.querySelector(".meta");
     const info = MODELS[currentModel];

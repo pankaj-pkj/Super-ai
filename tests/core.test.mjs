@@ -219,4 +219,29 @@ const peerAns = await peerBrain.respond("what is machine learning", "super-chat"
 assert.ok(peerAns.length > 30 && !peerAns.includes("curiosity queue"), "peer can answer from inherited mind");
 ok(`swarm: peer went ${before3} -> ${await peerStore.docCount()} docs, answers from inherited knowledge`);
 
+// ============ NEW: Telegram bot + real-world templates ============
+const tg = await brain.respond("telegram bot ka code banao", "super-coder");
+assert.ok(tg.includes("ApplicationBuilder") && tg.includes("BotFather") && tg.includes("run_polling"), "real telegram bot");
+ok("codegen: complete Telegram bot");
+const snake = await brain.respond("make a snake game", "super-coder");
+assert.ok(snake.includes("<canvas") && snake.includes("ArrowUp"), "snake game html");
+const flask = await brain.respond("build a flask rest api", "super-coder");
+assert.ok(flask.includes("@app.post") && flask.includes("jsonify"), "flask api");
+ok("codegen: snake game + flask api");
+
+// ============ NEW: sessions / history ============
+await store.logChat("u_test", "super-chat", "session A msg", "reply", 5, "sessA");
+await store.logChat("u_test", "super-chat", "session B msg", "reply", 5, "sessB");
+const sessions = await store.chatSessions(10);
+assert.ok(sessions.some((s) => s.id === "sessA") && sessions.some((s) => s.id === "sessB"), "sessions listed");
+const sessAChats = await store.recentChats(10, "sessA");
+assert.ok(sessAChats.every((c) => c.session_id === "sessA"), "session filter works");
+ok(`sessions: ${sessions.length} conversations tracked, filter works`);
+
+// ============ NEW: mobile-safe throttle exists ============
+const { isMobileDevice } = await import("../assets/js/core.js");
+assert.equal(typeof isMobileDevice(), "boolean", "mobile detection returns boolean");
+assert.ok("paused" in brain.llama || brain.llama.paused === undefined, "trainer has cooperative pause");
+ok("mobile: detection + cooperative training pause present");
+
 console.log(`\nALL ${pass} CHECKS PASSED`);

@@ -486,6 +486,167 @@ console.log(${f}("rock"));`,
     hi: "glowing digital clock — clock.html save karke kholo",
   },
   {
+    re: /telegram bot|telegram bhot|tg bot/i, fn: "telegram_bot",
+    py: () => `# Telegram bot — python-telegram-bot v20+   (pip install python-telegram-bot)
+import logging
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+
+logging.basicConfig(level=logging.INFO)
+TOKEN = "PASTE_YOUR_BOT_TOKEN_FROM_@BotFather"
+
+async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Hi! I'm your Super AI bot 🤖 Send /help to see commands.")
+
+async def help_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("/start - greet\\n/help - this menu\\n/echo <text> - repeat\\nOr just send me any message.")
+
+async def echo_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    text = " ".join(ctx.args) if ctx.args else "give me text after /echo"
+    await update.message.reply_text(text)
+
+async def on_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"You said: {update.message.text}")
+
+def main():
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_cmd))
+    app.add_handler(CommandHandler("echo", echo_cmd))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
+    print("Bot running… press Ctrl+C to stop")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()`,
+    js: () => `// Telegram bot — Node.js   (npm install node-telegram-bot-api)
+const TelegramBot = require("node-telegram-bot-api");
+const TOKEN = "PASTE_YOUR_BOT_TOKEN_FROM_@BotFather";
+const bot = new TelegramBot(TOKEN, { polling: true });
+
+bot.onText(/\\/start/, (msg) =>
+  bot.sendMessage(msg.chat.id, "Hi! I'm your Super AI bot 🤖 Send /help."));
+
+bot.onText(/\\/help/, (msg) =>
+  bot.sendMessage(msg.chat.id, "/start - greet\\n/help - menu\\n/echo <text> - repeat"));
+
+bot.onText(/\\/echo (.+)/, (msg, match) =>
+  bot.sendMessage(msg.chat.id, match[1]));
+
+bot.on("message", (msg) => {
+  if (msg.text && !msg.text.startsWith("/"))
+    bot.sendMessage(msg.chat.id, "You said: " + msg.text);
+});
+
+console.log("Bot running…");`,
+    en: "a complete, runnable Telegram bot: /start, /help, /echo and an echo handler. Get a token from @BotFather, paste it in, then run it.",
+    hi: "poora chalne wala Telegram bot: /start, /help, /echo aur echo handler. @BotFather se token lo, paste karo, chala do.",
+  },
+  {
+    re: /discord bot/i, fn: "discord_bot",
+    py: () => `# Discord bot — discord.py   (pip install discord.py)
+import discord
+from discord.ext import commands
+
+bot = commands.Bot(command_prefix="!", intents=discord.Intents.all())
+
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user}")
+
+@bot.command()
+async def ping(ctx):
+    await ctx.send("Pong! 🏓")
+
+@bot.command()
+async def echo(ctx, *, text):
+    await ctx.send(text)
+
+bot.run("PASTE_YOUR_DISCORD_BOT_TOKEN")`,
+    en: "a working Discord bot with !ping and !echo commands",
+    hi: "chalne wala Discord bot with !ping aur !echo commands",
+  },
+  {
+    re: /web scrap|scrape (a )?website|scraper/i, fn: "scrape",
+    py: () => `# Web scraper   (pip install requests beautifulsoup4)
+import requests
+from bs4 import BeautifulSoup
+
+def scrape(url):
+    html = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10).text
+    soup = BeautifulSoup(html, "html.parser")
+    title = soup.title.string if soup.title else ""
+    links = [a["href"] for a in soup.find_all("a", href=True)]
+    text = soup.get_text(" ", strip=True)
+    return {"title": title, "links": links[:20], "text": text[:500]}
+
+print(scrape("https://example.com"))`,
+    en: "fetches a page and extracts title, links and text",
+    hi: "page fetch karke title, links aur text nikaalta hai",
+  },
+  {
+    re: /flask\b.*\b(api|app|server|rest)|\bflask\b|(rest|web) api.*(python|flask)/i, fn: "flask_api",
+    py: () => `# Flask REST API   (pip install flask)
+from flask import Flask, jsonify, request
+
+app = Flask(__name__)
+items = []
+
+@app.get("/items")
+def list_items():
+    return jsonify(items)
+
+@app.post("/items")
+def add_item():
+    data = request.get_json()
+    data["id"] = len(items) + 1
+    items.append(data)
+    return jsonify(data), 201
+
+@app.get("/items/<int:item_id>")
+def get_item(item_id):
+    for it in items:
+        if it["id"] == item_id:
+            return jsonify(it)
+    return jsonify({"error": "not found"}), 404
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)`,
+    en: "a REST API with GET/POST endpoints and proper status codes",
+    hi: "GET/POST endpoints aur sahi status codes ke saath REST API",
+  },
+  {
+    re: /snake game/i, fn: "snake",
+    html: () => `<!DOCTYPE html>
+<html>
+<body style="margin:0;background:#0b0e1a;display:grid;place-items:center;height:100vh">
+  <canvas id="c" width="300" height="300" style="border:2px solid #7c5cff;background:#0a0d18"></canvas>
+  <script>
+    const ctx = c.getContext("2d"), G = 15;
+    let snake = [{x:5,y:5}], dir = {x:1,y:0}, food = {x:10,y:10}, score = 0;
+    document.onkeydown = (e) => {
+      if (e.key === "ArrowUp" && dir.y === 0) dir = {x:0,y:-1};
+      if (e.key === "ArrowDown" && dir.y === 0) dir = {x:0,y:1};
+      if (e.key === "ArrowLeft" && dir.x === 0) dir = {x:-1,y:0};
+      if (e.key === "ArrowRight" && dir.x === 0) dir = {x:1,y:0};
+    };
+    setInterval(() => {
+      const head = {x:(snake[0].x+dir.x+20)%20, y:(snake[0].y+dir.y+20)%20};
+      if (snake.some(s => s.x===head.x && s.y===head.y)) { snake=[{x:5,y:5}]; dir={x:1,y:0}; score=0; }
+      snake.unshift(head);
+      if (head.x===food.x && head.y===food.y) { score++; food={x:(Math.random()*20|0),y:(Math.random()*20|0)}; }
+      else snake.pop();
+      ctx.fillStyle="#0a0d18"; ctx.fillRect(0,0,300,300);
+      ctx.fillStyle="#00d4ff"; ctx.fillRect(food.x*G,food.y*G,G-1,G-1);
+      ctx.fillStyle="#7c5cff"; snake.forEach(s => ctx.fillRect(s.x*G,s.y*G,G-1,G-1));
+    }, 120);
+  </script>
+</body>
+</html>`,
+    en: "a full playable snake game with arrow-key controls — save as snake.html",
+    hi: "arrow keys se chalne wala poora snake game — snake.html save karke kholo",
+  },
+  {
     re: /stopwatch|timer (app|banao)/i, fn: "stopwatch",
     html: () => `<!DOCTYPE html>
 <html>

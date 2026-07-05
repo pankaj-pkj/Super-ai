@@ -84,9 +84,9 @@ class BaseStore {
   }
 
   // ---------------- chats ----------------
-  async logChat(userId, model, prompt, response, tokens) {
+  async logChat(userId, model, prompt, response, tokens, sessionId = "default") {
     return this._put("chats", {
-      user_id: userId, model, prompt: prompt.slice(0, 4000),
+      user_id: userId, model, session_id: sessionId, prompt: prompt.slice(0, 4000),
       response: response.slice(0, 8000), tokens, feedback: 0, created_at: nowSec(),
     });
   }
@@ -95,10 +95,26 @@ class BaseStore {
     if (row) { row.feedback = feedback; await this._put("chats", row); }
   }
   async chatCount() { return this._count("chats"); }
-  async recentChats(limit = 20) {
-    const rows = await this._all("chats");
+  async recentChats(limit = 20, sessionId = null) {
+    let rows = await this._all("chats");
+    if (sessionId) rows = rows.filter((c) => (c.session_id || "default") === sessionId);
     rows.sort((a, b) => a.id - b.id);
     return rows.slice(-limit);
+  }
+
+  // one entry per conversation, newest first, for the sidebar history list
+  async chatSessions(limit = 30) {
+    const rows = await this._all("chats");
+    rows.sort((a, b) => a.id - b.id);
+    const sessions = new Map();
+    for (const c of rows) {
+      const sid = c.session_id || "default";
+      if (!sessions.has(sid))
+        sessions.set(sid, { id: sid, title: c.prompt.slice(0, 40), at: c.created_at, count: 0 });
+      sessions.get(sid).count++;
+      sessions.get(sid).at = c.created_at;
+    }
+    return [...sessions.values()].sort((a, b) => b.at - a.at).slice(0, limit);
   }
   async feedbackStats() {
     const chats = await this._all("chats");

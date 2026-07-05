@@ -24,16 +24,23 @@ export const BRAIN_MODELS = [
     desc: "Meta's Llama brain — much better answers",
   },
   {
+    id: "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC",
+    label: "Qwen 2.5 Coder (1.5B) — Best for CODE",
+    size: "~1.4 GB",
+    desc: "Purpose-built for coding — writes Telegram bots, APIs, full programs",
+    coder: true,
+  },
+  {
     id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC",
     label: "Qwen 2.5 (1.5B) — Smarter",
     size: "~1.6 GB",
-    desc: "Strong coding — good laptops/PCs",
+    desc: "Strong all-round — good laptops/PCs",
   },
   {
     id: "Llama-3.2-3B-Instruct-q4f16_1-MLC",
-    label: "Llama 3.2 (3B) — Best",
+    label: "Llama 3.2 (3B) — Best quality",
     size: "~2.3 GB",
-    desc: "Best quality — needs a PC with a real GPU",
+    desc: "Best answers — needs a PC with a real GPU",
   },
 ];
 

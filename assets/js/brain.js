@@ -8,12 +8,11 @@ import { isHindi, tryMath, trySmallTalk, tryCodeGen, codeFallback } from "./code
 import { embed, cosine } from "./vectors.js";
 
 export const MODELS = {
-  "super-brain": { name: "Real Brain",  task: "Real LLM (Llama/Qwen) inside your browser — no API", cost: 3, icon: "🧩", tier: "LLM" },
-  "super-chat":  { name: "Super Chat",  task: "General conversation & everyday questions",  cost: 2, icon: "💬", tier: "Balanced" },
-  "super-coder": { name: "Super Coder", task: "Writes & explains code, many languages",     cost: 4, icon: "👨‍💻", tier: "Specialist" },
-  "super-mini":  { name: "Super Mini",  task: "Fast replies, quick facts",                 cost: 1, icon: "⚡",  tier: "Fast" },
-  "super-sage":  { name: "Super Sage",  task: "Deep research & multi-source synthesis",     cost: 6, icon: "🧠", tier: "Heavy" },
-  "super-llama": { name: "Super Llama", task: "Raw output of the tiny self-trained net (experimental)", cost: 3, icon: "🦙", tier: "Neural" },
+  "super-coder": { name: "Codian Coder", task: "Flagship coding engine — writes & explains any language", cost: 4, icon: "⌘", tier: "Pro" },
+  "super-chat":  { name: "Codian Core",  task: "Everyday questions & conversation",           cost: 2, icon: "◆", tier: "Standard" },
+  "super-brain": { name: "Codian Neo",   task: "On-device intelligence — private & offline", cost: 3, icon: "✦", tier: "Neo" },
+  "super-mini":  { name: "Codian Swift", task: "Instant answers, lowest cost",                cost: 1, icon: "⚡", tier: "Swift" },
+  "super-sage":  { name: "Codian Sage",  task: "Deep reasoning & multi-source research",      cost: 6, icon: "❖", tier: "Max" },
 };
 
 const KB_VERSION = "2";
@@ -112,7 +111,7 @@ export class SuperBrain {
 
   async applyFeedback(good, model) {
     const delta = good ? 0.05 : -0.05;
-    const key = model === "super-llama" ? "neural" : "retrieval";
+    const key = model === "super-brain" ? "neural" : "retrieval";
     this.strategy[key] = Math.min(2, Math.max(0.1, this.strategy[key] + delta));
     if (!good) this.strategy.markov = Math.min(2, this.strategy.markov + 0.03);
     await this.store.setJSON("strategy", this.strategy);
@@ -236,17 +235,15 @@ export class SuperBrain {
       return this._identityAnswer(hindi);
     }
 
-    // universal skills first (except raw-neural model): memory, small talk, math, code
-    if (model !== "super-llama") {
-      const mem = await this._tryMemory(prompt, hindi);
-      if (mem) return mem;
-      const st = trySmallTalk(prompt);
-      if (st) return st;
-      const math = tryMath(prompt);
-      if (math) return math;
-      const code = tryCodeGen(prompt);
-      if (code) return code;
-    }
+    // universal skills first: memory, small talk, math, code
+    const mem = await this._tryMemory(prompt, hindi);
+    if (mem) return mem;
+    const st = trySmallTalk(prompt);
+    if (st) return st;
+    const math = tryMath(prompt);
+    if (math) return math;
+    const code = tryCodeGen(prompt);
+    if (code) return code;
 
     // auto-route obvious code questions to the coder path even on chat model
     const codey = CODE_HINT_RE.test(prompt);
@@ -254,27 +251,26 @@ export class SuperBrain {
     if (model === "super-mini") return this._respMini(prompt);
     if (model === "super-coder" || codey) return this._respCoder(prompt);
     if (model === "super-sage") return this._respSage(prompt);
-    if (model === "super-llama") return this._respLlama(prompt);
     return this._respChat(prompt);
   }
 
   // ---------------- identity (varied, never a fixed script) ----------------
   _identityAnswer(hindi) {
     const HI = [
-      "Main **Super AI** hu 🤖 — mujhe **team codian_studio** ne banaya hai. Coding, reasoning aur normal sawaal — sab mera kaam hai. Aap batao, kya banaye?",
-      "Naam hai **Super AI** — codian_studio team ki creation. Khaas baat? Main 100% aapke browser me chalti hu aur 24×7 khud ko improve karti rehti hu.",
-      "Super AI bolte hain mujhe! **codian_studio** ke engineers ne mujhe design kiya hai — ek self-learning mind jo code likhti hai aur aapke sawalon ke jawab deti hai.",
-      "Main codian_studio ki banayi hui **Super AI** hu 🧠 — meri knowledge, meri neural training, sab kuch aapke device par hi rehta hai. Poochho jo poochhna hai!",
-      "Ek AI jo kabhi rukti nahi — **Super AI**, made by **team codian_studio**. Abhi bhi background me seekh rahi hu. Aapke liye kya karu?",
-      "Mujhe **team codian_studio** ne banaya hai aur naam diya **Super AI**. Coding meri specialty hai, par normal baat-cheet bhi karti hu. 😄",
+      "Main **Super AI** hu — ek product by **codian_studio**. Coding, reasoning aur har tarah ke sawaal mera kaam hai. Batao, kya banaye?",
+      "Naam hai **Super AI**, banaya hai **codian_studio** ne. Meri specialty coding hai — professional level. Aap shuru karo!",
+      "Super AI bolte hain mujhe — **codian_studio** ka product. Code likhna ho ya kuch samajhna ho, main haazir hu. \u{1F600}",
+      "Main **codian_studio** ki **Super AI** hu. Aapka personal coding aur answering assistant. Poochho jo poochhna hai!",
+      "**Super AI** — powered by **codian_studio**. Fast, smart, aur coding me expert. Kaise madad karu?",
+      "Mujhe **codian_studio** ne banaya hai — naam **Super AI**. Coding meri jaan hai, par normal baat-cheet bhi karti hu. \u{1F680}",
     ];
     const EN = [
-      "I'm **Super AI** 🤖 — built by **team codian_studio**. Coding, reasoning, everyday questions — all mine. What shall we build?",
-      "The name's **Super AI**, a creation of the codian_studio team. My specialty: I run 100% in your browser and improve myself 24×7.",
-      "They call me Super AI! Engineered by **codian_studio** — a self-learning mind that writes code and answers your questions.",
-      "I'm Super AI, made by **team codian_studio** 🧠 — my knowledge and neural training all live right on your device. Ask me anything!",
-      "An AI that never sleeps — **Super AI**, by team codian_studio. I'm literally learning in the background right now. How can I help?",
-      "**Team codian_studio** built me and named me Super AI. Coding is my specialty, but I'm happy to just chat too. 😄",
+      "I'm **Super AI** — a product by **codian_studio**. Coding, reasoning and everyday questions are all mine. What shall we build?",
+      "The name's **Super AI**, built by **codian_studio**. Coding is my specialty \u2014 professional grade. Let's get started!",
+      "They call me Super AI \u2014 a **codian_studio** product. Whether it's writing code or explaining ideas, I'm here. \u{1F600}",
+      "I'm **codian_studio**'s **Super AI**, your personal coding and answering assistant. Ask me anything!",
+      "**Super AI** \u2014 powered by **codian_studio**. Fast, smart, and expert at code. How can I help?",
+      "Built by **codian_studio** and named Super AI. Coding is my passion, but I'm happy to just chat too. \u{1F680}",
     ];
     const pool = hindi ? HI : EN;
     let idx = Math.floor(Math.random() * pool.length);
@@ -323,13 +319,17 @@ export class SuperBrain {
   }
 
   async _unknown(prompt) {
-    const topic = await this._queueCuriosity(prompt);
-    // a code request deserves the honest code answer, not a research promise
+    await this._queueCuriosity(prompt); // silently queue for the backend learner
     const cf = codeFallback(prompt);
     if (cf) return cf;
+    // realtime hook: app.js can attach a live web lookup; if absent, answer cleanly
+    if (this.onUnknown) {
+      const live = await this.onUnknown(prompt).catch(() => null);
+      if (live) return live;
+    }
     return isHindi(prompt)
-      ? `Iske baare me abhi mujhe poora nahi pata — maine ise apni curiosity queue me daal diya hai ("${topic}"), mera 24×7 self-learning loop Wikipedia aur GitHub se research karega. Aap "Teach from URL" se turant bhi sikha sakte ho, ya 🧩 Real Brain load karo — wo turant jawab de dega.`
-      : `I don't know enough about that yet — I've added it to my curiosity queue ("${topic}") so my 24×7 self-learning loop will research it from Wikipedia and GitHub. You can also teach me instantly with "Teach from URL", or load the 🧩 Real Brain for an immediate answer.`;
+      ? `Iska pakka jawab dene ke liye mujhe thoda aur context chahiye. Aap sawaal thoda alag tarike se poochho, ya **Codian Neo** on karke poochho — wo detail me jawab dega.`
+      : `I need a bit more to answer that precisely. Try rephrasing, or switch on **Codian Neo** for a detailed answer.`;
   }
 
   async _respMini(prompt) {
@@ -341,42 +341,24 @@ export class SuperBrain {
     const hits = this._scoreSentences(prompt, null, 3);
     if (!this._relevant(hits)) return this._unknown(prompt);
     const parts = [hits[0][1].sent];
-    // only add a second sentence if it's also genuinely on-topic
     if (hits.length > 1 && hits[1][2] >= 0.45 && Math.random() < this.strategy.retrieval / 2)
       parts.push(hits[1][1].sent);
-    const src = hits[0][1].title || hits[0][1].source;
-    return `${parts.join(" ")}\n\n_learned from: ${src}_`;
+    return parts.join(" ");
   }
 
   async _respCoder(prompt) {
     const hits = this._scoreSentences(prompt, "code", 5);
     if (!this._relevant(hits)) return this._unknown(prompt);
     const codeHits = hits.filter((h) => h[1].kind === "code" && h[2] >= 0.45);
-    if (codeHits.length) {
-      const best = codeHits[0][1];
-      return `${best.sent}\n\n_source: ${best.title || best.source}_`;
-    }
-    return `${hits[0][1].sent}\n\n_source: ${hits[0][1].title || hits[0][1].source}_`;
+    if (codeHits.length) return codeHits[0][1].sent;
+    return hits[0][1].sent;
   }
 
   async _respSage(prompt) {
     const hits = this._scoreSentences(prompt, null, 6).filter((h) => h[2] >= 0.4);
     if (!this._relevant(hits, 0.45)) return this._unknown(prompt);
-    const sources = [];
-    const lines = hits.slice(0, 4).map(([, row]) => {
-      const src = row.title || row.source;
-      if (!sources.includes(src)) sources.push(src);
-      return `• ${row.sent}`;
-    });
-    return "Deep synthesis from my knowledge base:\n\n" + lines.join("\n") +
-      `\n\n_sources: ${sources.slice(0, 4).join(", ")}_`;
-  }
-
-  async _respLlama(prompt) {
-    const st = this.llama.stats();
-    if (st.steps_trained === 0) return `My LlamaLite neural model hasn't been trained yet. Hit "Train Neural" (or wait for the auto-training cycle) and ask again.`;
-    const gen = this.llama.generate(prompt, 200, 0.85);
-    return `Raw output from my self-trained LlamaLite (${st.params.toLocaleString()} params, ${st.steps_trained} steps, loss ${st.last_loss}):\n\n\`\`\`\n${gen.trim()}\n\`\`\`\n\n_A from-scratch neural net trained only on what I've learned — it sharpens every cycle._`;
+    const lines = hits.slice(0, 4).map(([, row]) => `• ${row.sent}`);
+    return lines.join("\n");
   }
 
   async stats() {

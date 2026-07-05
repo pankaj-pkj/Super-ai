@@ -128,7 +128,8 @@ export const KB = [
 // UI i18n — English + Hindi
 export const I18N = {
   en: {
-    tagline: "self-training mind · runs 100% in your browser",
+    tagline: "by codian_studio",
+    footer: "Super AI by codian_studio · your coding & answering companion",
     daily: "Daily Tokens", models: "Models — pick per task", stats: "Mind Stats",
     feed: "Self-Improvement Feed", teach: "Teach from URL", train: "Train Neural",
     improve: "Self-Improve Now", placeholder: "Message Super AI… (it learns from you too)",
@@ -137,12 +138,12 @@ export const I18N = {
     steps: "neural steps", limitHit: "Daily token limit reached — resets at midnight UTC.",
     newchat: "New Chat", history: "Chats",
     autolearn: "Auto-learn 24×7", intro:
-      "A fully self-contained AI that trains itself in your browser — no server, no API keys. " +
-      "It knows many programming languages out of the box, harvests knowledge from GitHub & the web, " +
-      "trains its own neural model, and learns from every chat. Pick a model on the left for your task.",
+      "Your professional coding & answering assistant by codian_studio. Ask a question, " +
+      "get instant working code, or activate on-device intelligence for private answers.",
   },
   hi: {
-    tagline: "khud seekhne wala dimaag · 100% aapke browser me",
+    tagline: "by codian_studio",
+    footer: "Super AI by codian_studio · aapka coding & answering saathi",
     daily: "Daily Tokens", models: "Models — kaam ke hisaab se chuno", stats: "Dimaag ke Stats",
     feed: "Self-Improvement Feed", teach: "URL se sikhao", train: "Neural Train karo",
     improve: "Abhi Self-Improve", placeholder: "Super AI ko message karo… (ye aapse bhi seekhta hai)",
@@ -151,8 +152,7 @@ export const I18N = {
     steps: "neural steps", limitHit: "Aaj ka token limit khatam — midnight UTC par reset hoga.",
     newchat: "Nayi Chat", history: "Chats",
     autolearn: "Auto-learn 24×7", intro:
-      "Ek poori tarah self-contained AI jo aapke browser me khud ko train karti hai — koi server nahi, " +
-      "koi API key nahi. Ye kai programming languages pehle se jaanti hai, GitHub aur web se gyaan " +
-      "harvest karti hai, apna neural model train karti hai, aur har chat se seekhti hai.",
+      "codian_studio ka professional coding & answering assistant. Sawaal poochho, turant chalne wala " +
+      "code lo, ya private jawaabon ke liye on-device intelligence activate karo.",
   },
 };

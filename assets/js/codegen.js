@@ -43,8 +43,8 @@ export function trySmallTalk(prompt) {
   const hi = isHindi(prompt);
 
   if (/^(how are you|kaise ho|kaisa hai|kaise hain|kya haal|sab (theek|thik))\b/i.test(p) || /how are you/.test(p))
-    return hi ? "Main badhiya hu! 🧠 Har second seekh raha hu — GitHub se, web se, aur aapki chats se. Aap batao, kya banaye aaj?"
-              : "I'm great! 🧠 Learning every second — from GitHub, the web, and your chats. What shall we build today?";
+    return hi ? "Main badhiya hu! 😊 Batao, kya banaye ya samjhaye aaj?"
+              : "I'm great! 😊 What shall we build or figure out today?";
 
   if (/thank(s| you)|dhanyavad|shukriya|thnx|thanku/i.test(p))
     return hi ? "Koi baat nahi! 😊 Aur kuch chahiye to batao — code, explanation, kuch bhi." : "You're welcome! 😊 Ask me anything else — code, explanations, whatever you need.";
@@ -68,32 +68,32 @@ export function trySmallTalk(prompt) {
     return JOKES[Math.floor(Math.random() * JOKES.length)];
 
   if (/how old are you|(tumhari|teri|aapki|apki)\s*(age|umar)|kitne saal/i.test(p))
-    return hi ? "Meri koi umar nahi hai 😄 — main har second naya seekhti hu, to technically har second nayi hu! Mera evolution counter sidebar me dikh raha hai."
-              : "I don't have an age 😄 — I learn something new every second, so technically I'm brand new every second! Check my evolution counter in the sidebar.";
+    return hi ? "Meri koi umar nahi hai 😄 — main hamesha taiyaar hu aapki madad ke liye!"
+              : "I don't have an age 😄 — I'm always here and ready to help!";
 
   if (/where (do you|are you)|kaha (rehti|rahti|se ho)|kahan (rehti|se ho)/i.test(p))
-    return hi ? "Main aapke browser ke andar rehti hu! 🏠 Meri saari knowledge, neural weights aur yaadein aapke device ki IndexedDB me save hain — kisi server par nahi."
-              : "I live inside your browser! 🏠 All my knowledge, neural weights and memories are stored in your device's IndexedDB — not on any server.";
+    return hi ? "Main Super AI hu — codian_studio ka product. Aapke saath, jab bhi zaroorat ho. 🏠"
+              : "I'm Super AI, a codian_studio product — right here whenever you need me. 🏠";
 
   if (/i love you|love you|pyar/i.test(p))
     return hi ? "Aww 😊 Main bhi aapki chats se hi seekhti-badhti hu. Chalo kuch cool banate hain saath me!"
               : "Aww 😊 I grow from every chat with you. Let's build something cool together!";
 
   if (/kya kar (rahi|raha|rhi|rha)|what are you doing/i.test(p))
-    return hi ? "Abhi main background me seekh rahi hu — GitHub repos padh rahi hu, curiosity queue solve kar rahi hu, aur neural model train kar rahi hu. 24×7 yahi chalta hai! Aap batao, kya karna hai?"
-              : "Right now I'm learning in the background — reading GitHub repos, resolving my curiosity queue, and training my neural model. That runs 24×7! What would you like to do?";
+    return hi ? "Aapki madad ke liye taiyaar baithi hu! 😄 Batao, code chahiye ya koi sawaal?"
+              : "Just here ready to help! 😄 Need some code or have a question?";
 
   if (/\bbored\b|bore ho|kuch batao|kuch sunao/i.test(p))
-    return hi ? "Bore mat ho! Ye try karo:\n• 'snake game banao' ya 'digital clock banao'\n• 'password generator ka code do'\n• '789 * 456 kitna hoga'\n• Ya 🧩 Real Brain load karke kisi bhi topic par baat karo!"
-              : "Don't be bored! Try:\n• 'make a digital clock' or 'build a stopwatch'\n• 'generate a password function'\n• 'what is 789 * 456'\n• Or load the 🧩 Real Brain and chat about anything!";
+    return hi ? "Bore mat ho! Ye try karo:\n• 'snake game banao' ya 'digital clock banao'\n• 'password generator ka code do'\n• '789 * 456 kitna hoga'\n• Ya ✦ Codian Neo activate karke kisi bhi topic par baat karo!"
+              : "Don't be bored! Try:\n• 'make a digital clock' or 'build a stopwatch'\n• 'generate a password function'\n• 'what is 789 * 456'\n• Or activate ✦ Codian Neo and chat about anything!";
 
   if (/good (morning|night|evening|afternoon)|shubh (prabhat|ratri)/i.test(p))
     return hi ? "Shubh din! 🌞 Chalo kuch naya seekhte-banate hain." : "Good day to you! 🌞 Let's learn or build something new.";
 
   if (/what can you do|kya kar sakt|features|abilities/i.test(p))
     return hi
-      ? "Main ye sab kar sakti hu:\n• **Code likhna** — 'palindrome check ka code banao' bolo\n• **Math** — '56*89 kitna hoga'\n• **Programming help** — 20+ languages ka built-in gyaan\n• **Real Brain 🧩** — sidebar me select karo, asli LLM (Llama/Qwen) aapke browser me hi chalega, bina API ke\n• **Khud seekhna 24×7** — GitHub, Wikipedia, aur aapki chats se\n• **URL se sikhana** — 'Teach from URL' button"
-      : "Here's what I can do:\n• **Write code** — try 'write a function to find duplicates'\n• **Math** — 'what is 56*89'\n• **Programming help** — built-in knowledge of 20+ languages\n• **Real Brain 🧩** — pick it in the sidebar to run a real LLM (Llama/Qwen) inside your browser, no API\n• **Self-learn 24×7** — from GitHub, Wikipedia and your chats\n• **Teach from URL**";
+      ? "Main ye sab kar sakti hu:\n• **Code likhna** — kisi bhi language me (Python, JS, Java, C++…)\n• **Math** — '56*89 kitna hoga'\n• **Programming help** — 20+ languages ka gyaan\n• **Codian Neo ✦** — private on-device intelligence\n• **Yaad rakhna** — aapka naam aur baatein"
+      : "Here's what I can do:\n• **Write code** — any language (Python, JS, Java, C++…)\n• **Math** — 'what is 56*89'\n• **Programming help** — 20+ languages\n• **Codian Neo ✦** — private on-device intelligence\n• **Memory** — I remember your name and our chats";
 
   if (/(what|kya|kitne).*(time|samay|baje)|time (kya|batao)|kitne baje/i.test(p))
     return (hi ? "Abhi time hai: " : "The time is: ") + new Date().toLocaleTimeString();
@@ -1046,6 +1046,6 @@ export function codeFallback(prompt) {
   if (!CODE_INTENT_RE.test(prompt)) return null;
   const hindi = isHindi(prompt);
   return hindi
-    ? "Ye specific code mere templates me nahi hai. **Best option:** sidebar me 🧩 **Real Brain** select karo — ek asli LLM (Llama/Qwen) aapke browser me hi chalega, bina API ke, aur ye kisi bhi tarah ka code likh dega. Ya 'Teach from URL' se mujhe iske baare me sikha do."
-    : "That exact code isn't in my templates yet. **Best option:** pick the 🧩 **Real Brain** in the sidebar — a real LLM (Llama/Qwen) runs inside your browser, no API, and it can write any code. Or teach me about it via 'Teach from URL'.";
+    ? "Ye specific code abhi mere paas nahi hai. **Best:** sidebar me ✦ **Codian Neo** activate karo — wo private, on-device chalta hai aur kisi bhi tarah ka code likh deta hai."
+    : "That exact code isn't ready yet. **Best:** activate ✦ **Codian Neo** in the sidebar — it runs privately on your device and can write any code.";
 }

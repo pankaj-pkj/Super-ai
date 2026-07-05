@@ -10,11 +10,13 @@ import { RealBrain, BRAIN_MODELS } from "./realbrain.js";
 import { Auth } from "./auth.js";
 import { exportBundle, importBundle, SwarmLink } from "./swarm.js";
 import { isMobileDevice } from "./core.js";
+import { Backend } from "./backend.js";
 
 const $ = (id) => document.getElementById(id);
 
 // ---------------- identity + prefs ----------------
 const auth = new Auth();
+const backend = new Backend();
 let userId = auth.loggedIn ? auth.userId : "anonymous";
 let currentModel = localStorage.getItem("superai_model") || "super-chat";
 let lang = localStorage.getItem("superai_lang") || "en";
@@ -47,6 +49,12 @@ function finishLogin() {
   $("loginOverlay").classList.remove("show");
   renderProfile();
   refreshTokens();
+  // verify server-side + enable realtime answers when a backend is configured
+  if (backend.enabled) {
+    backend.login(auth.profile).then((u) => {
+      if (u && brain) brain.onUnknown = (p) => backend.realtimeAnswer(p);
+    }).catch(() => {});
+  }
   toast((lang === "hi" ? "Swagat hai, " : "Welcome, ") + auth.profile.name + "! 👋", "good");
 }
 window.doEmailLogin = function () {
@@ -94,7 +102,15 @@ function renderProfile() {
   await restoreHistory();
 
   realBrain.userName = auth.profile?.name || (await store.getKV("user_name"));
-  autoLoadBrain(); // reload cached Real Brain in the background (no re-download)
+
+  // If a cPanel backend is configured, verify the login server-side and wire
+  // realtime answers (server scrapes live + serves its 24×7 knowledge base).
+  if (backend.enabled && auth.loggedIn) {
+    backend.login(auth.profile).catch(() => {});
+    brain.onUnknown = (prompt) => backend.realtimeAnswer(prompt);
+  }
+
+  autoLoadBrain(); // reload cached Codian Neo in the background
 
   harvester.start(); // 24×7 self-learning while the tab is open
   setInterval(refreshStats, 15000);
@@ -148,7 +164,7 @@ window.newChat = function () {
   if (!$("welcome")) {
     const w = document.createElement("div");
     w.className = "welcome"; w.id = "welcome";
-    w.innerHTML = `<div class="big-orb">🧠</div><h2><span>${lang === "hi" ? "Nayi chat" : "New chat"}</span> — <span>Super AI</span></h2>
+    w.innerHTML = `<div class="big-orb">✦</div><h2><span>${lang === "hi" ? "Nayi chat" : "New chat"}</span> — <span>Super AI</span></h2>
       <p>${lang === "hi" ? "Kuch bhi poochho ya code mangwao — main yaad rakhungi." : "Ask anything or request code — I'll remember it."}</p>`;
     chat.appendChild(w);
   }
@@ -184,8 +200,8 @@ async function autoLoadBrain() {
       && !localStorage.getItem("superai_brain_optout")) {
     saved = cfg.AUTO_BRAIN_MODEL || "SmolLM2-360M-Instruct-q4f16_1-MLC";
     toast(lang === "hi"
-      ? "\u{1F9E9} Real Brain background me download ho raha hai (one-time, ~270MB)\u2026"
-      : "\u{1F9E9} Downloading the Real Brain in the background (one-time, ~270MB)\u2026");
+      ? "✦ Codian Neo taiyaar ho raha hai…"
+      : "✦ Preparing Codian Neo…");
   }
   if (!saved || !realBrain.supported() || realBrain.ready) return;
   setBrainBadge(lang === "hi" ? "cache se load ho raha…" : "loading from cache…");
@@ -195,7 +211,7 @@ async function autoLoadBrain() {
       setBrainBadge(pct < 100 ? pct + "%" : "…");
     });
     setBrainBadge("ready ✓");
-    toast("🧩 Real Brain ready (from cache) — " + saved.split("-q4")[0], "good");
+    toast("✦ Codian Neo ready", "good");
     localStorage.setItem("superai_brain_model", saved); // remember for next visit
   } catch {
     setBrainBadge("");
@@ -283,40 +299,10 @@ function renderBalance(b) {
 }
 async function refreshTokens() { renderBalance(await bank.balance(userId)); }
 
-// ---------------- stats + evolution ----------------
-async function refreshStats() {
-  const b = await brain.stats();
-  const t = I18N[lang];
-  $("stDocs").textContent = b.docs;
-  $("stSents").textContent = b.sentences.toLocaleString();
-  $("stEvo").textContent = b.evolution_cycle;
-  $("stSteps").textContent = b.neural.steps_trained.toLocaleString();
-  $("stLoss").textContent = b.neural.last_loss ? "loss " + b.neural.last_loss : "not trained yet";
-  const spark = $("lossSpark"); spark.innerHTML = "";
-  const hist = b.neural.loss_history || [];
-  if (hist.length) {
-    const mx = Math.max(...hist);
-    hist.forEach((l) => {
-      const bar = document.createElement("i");
-      bar.style.height = Math.max(6, (100 * l) / mx) + "%";
-      spark.appendChild(bar);
-    });
-  }
-  ["stDocsK","stSentsK","stEvoK","stStepsK"].forEach((k, i) =>
-    { const el = $(k); if (el) el.textContent = [t.docs, t.sentences, t.evolutions, t.steps][i]; });
-}
-async function refreshEvolution() {
-  const feed = await store.evolutionFeed(30);
-  const box = $("evoFeed");
-  if (!feed.length) return;
-  box.innerHTML = "";
-  for (const e of feed) {
-    const d = document.createElement("div");
-    d.className = "e";
-    d.innerHTML = `<b>#${e.cycle} ${escapeHtml(e.event)}</b><br>${escapeHtml(e.detail)}`;
-    box.appendChild(d);
-  }
-}
+// Internal stats/feed are hidden in the public product — kept as safe no-ops
+// so background code that calls them never breaks.
+async function refreshStats() {}
+async function refreshEvolution() {}
 
 // ---------------- chat ----------------
 const LANG_EXT = { python: "py", javascript: "js", html: "html", java: "java", cpp: "cpp",
@@ -434,8 +420,8 @@ window.send = async function () {
       typing.remove();
       openBrainModal();
       addMsg("ai", "🧩 " + (lang === "hi"
-        ? "Pehle Real Brain load karo — one-time download, phir sab kuch aapke browser me hi chalega (bina API ke)."
-        : "Load the Real Brain first — one-time download, then everything runs inside your browser (no API)."));
+        ? "Pehle Codian Neo activate karo — ek baar taiyaar hone ke baad sab kuch aapke device par private chalega."
+        : "Activate Codian Neo first — after a one-time setup everything runs privately on your device."));
       busy = false; $("sendBtn").disabled = false; return;
     }
 
@@ -617,8 +603,8 @@ function openBrainModal() {
   const box = $("brainModels");
   if (!realBrain.supported()) {
     box.innerHTML = `<p style="color:var(--bad);font-size:13px;line-height:1.6">⚠️ ${lang === "hi"
-      ? "Is browser me WebGPU nahi hai. Latest <b>Chrome/Edge</b> (desktop ya Android) ya Safari 26+ use karo — phir yahan asli Llama/Qwen LLM chalega."
-      : "WebGPU isn't available in this browser. Use a recent <b>Chrome/Edge</b> (desktop or Android) or Safari 26+ to run a real Llama/Qwen LLM here."}</p>`;
+      ? "Codian Neo ke liye latest <b>Chrome/Edge</b> (desktop ya Android) ya Safari 26+ chahiye. Tab tak baaki models bilkul chalte hain."
+      : "Codian Neo needs a recent <b>Chrome/Edge</b> (desktop or Android) or Safari 26+. The other models work everywhere."}</p>`;
     $("brainGo").style.display = "none";
   } else {
     box.innerHTML = BRAIN_MODELS.map((m, i) => `
@@ -651,8 +637,8 @@ window.loadRealBrain = async function () {
     window.closeBrainModal();
     localStorage.setItem("superai_brain_model", sel.value); // auto-reload next visit
     setBrainBadge("ready ✓");
-    toast("🧩 Real Brain ready — " + sel.value.split("-q4")[0] + " (cached: next visit loads instantly)", "good");
-    brain.evolve("real-brain", `loaded ${sel.value} via WebLLM (local, no API)`);
+    toast("✦ Codian Neo activated — loads instantly next time", "good");
+    brain.evolve("neo", "on-device intelligence activated");
     refreshEvolution();
   } catch (e) {
     $("brainStatus").textContent = "⚠️ " + e.message;

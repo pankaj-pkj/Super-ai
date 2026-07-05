@@ -53,6 +53,7 @@ export class Auth {
         email: payload.email,
         picture: payload.picture || null,
         provider: "google",
+        credential: jwt,   // kept for optional server-side verification
         at: Date.now(),
       };
       localStorage.setItem("superai_profile", JSON.stringify(this.profile));

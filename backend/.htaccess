@@ -1,0 +1,15 @@
+# Protect backend internals; only /api/*.php is reachable from the web.
+<FilesMatch "\.(php)$">
+  Require all granted
+</FilesMatch>
+
+# Block direct access to config, lib, schema and the cron script.
+<FilesMatch "^(config|config\.sample|lib)\.php$">
+  Require all denied
+</FilesMatch>
+<FilesMatch "\.(sql|md)$">
+  Require all denied
+</FilesMatch>
+
+# Deny the whole cron/ folder from the web (it runs via cPanel cron only).
+RedirectMatch 403 ^/backend/cron/.*$

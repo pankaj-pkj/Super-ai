@@ -135,6 +135,7 @@ export const I18N = {
     welcome: "Welcome to", used: "used", requests: "requests", resets: "resets in",
     docs: "docs learned", sentences: "sentences", evolutions: "evolutions",
     steps: "neural steps", limitHit: "Daily token limit reached — resets at midnight UTC.",
+    newchat: "New Chat", history: "Chats",
     autolearn: "Auto-learn 24×7", intro:
       "A fully self-contained AI that trains itself in your browser — no server, no API keys. " +
       "It knows many programming languages out of the box, harvests knowledge from GitHub & the web, " +
@@ -148,6 +149,7 @@ export const I18N = {
     welcome: "Swagat hai", used: "use hua", requests: "requests", resets: "reset hoga",
     docs: "docs seekhe", sentences: "sentences", evolutions: "evolutions",
     steps: "neural steps", limitHit: "Aaj ka token limit khatam — midnight UTC par reset hoga.",
+    newchat: "Nayi Chat", history: "Chats",
     autolearn: "Auto-learn 24×7", intro:
       "Ek poori tarah self-contained AI jo aapke browser me khud ko train karti hai — koi server nahi, " +
       "koi API key nahi. Ye kai programming languages pehle se jaanti hai, GitHub aur web se gyaan " +

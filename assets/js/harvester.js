@@ -9,6 +9,7 @@
 // and gets researched automatically.
 
 import { LANGUAGES } from "./knowledge.js";
+import { isMobileDevice } from "./core.js";
 
 // Seed docs across many languages (all CORS-friendly raw files).
 const SEED = [
@@ -49,7 +50,9 @@ export class Harvester {
   constructor(brain, store, intervalSec = 120) {
     this.brain = brain;
     this.store = store;
-    this.intervalSec = intervalSec;
+    this.mobile = isMobileDevice();
+    // phones get a gentler cadence so the browser never janks
+    this.intervalSec = this.mobile ? Math.max(300, intervalSec) : intervalSec;
     this.enabled = true;
     this.lastRun = null;
     this.lastReport = {};
@@ -160,20 +163,35 @@ export class Harvester {
       }
     })();
     const tick = async () => {
-      if (this.enabled) { try { await this.cycle(); } catch {} }
+      // never run heavy work while the tab is in the background (mobile freeze fix)
+      if (this.enabled && !this._hidden()) { try { await this.cycle(); } catch {} }
       this._timer = setTimeout(tick, this.intervalSec * 1000);
     };
     this._timer = setTimeout(tick, this.intervalSec * 1000);
 
-    // 24×7 micro-training: a small neural pass every 60s, so the mind is
-    // literally never idle (cheap enough to not heat up phones)
+    // 24×7 micro-training so the mind is never idle. On desktop it's a small
+    // neural pass every 90s; on phones it's lighter and less frequent, and it
+    // NEVER runs when the tab is hidden — that was the phone-freeze cause.
+    const microMs = this.mobile ? 180000 : 90000;
+    const microSteps = this.mobile ? 12 : 30;
     this._microTimer = setInterval(async () => {
-      if (!this.enabled || this.brain.llama.training) return;
+      if (!this.enabled || this._hidden() || this.brain.llama.training) return;
       try {
-        if ((await this.store.docCount()) > 2) await this.brain.llama.train(
-          await this.store.corpusText(30000), 30, 0.03);
+        if ((await this.store.docCount()) > 2)
+          await this.brain.llama.train(await this.store.corpusText(20000), microSteps, 0.03);
       } catch { /* keep the loop alive */ }
-    }, 60000);
+    }, microMs);
+
+    // pause instantly when the user switches away; resume when back
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", () => {
+        this.brain.llama.paused = document.hidden;
+      });
+    }
+  }
+
+  _hidden() {
+    return typeof document !== "undefined" && document.hidden;
   }
 
   status() {

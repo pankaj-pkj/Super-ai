@@ -200,9 +200,11 @@ export class LlamaLite {
     const ids = this.encode(corpus);
     const losses = [];
     this.training = true;
-    const CHUNK = 40;
+    // yield often (every 12 samples) so the main thread never locks up on mobile
+    const CHUNK = 12;
     try {
       for (let step = 0; step < steps; step++) {
+        if (this.paused) break; // cooperative stop (e.g. tab hidden)
         const i = Math.floor(Math.random() * (ids.length - CTX - 1));
         const ctx = ids.slice(i, i + CTX);
         const target = ids[i + CTX];
@@ -211,12 +213,13 @@ export class LlamaLite {
         this.stepsTrained++;
         if (step % CHUNK === CHUNK - 1) {
           if (onProgress) onProgress(step + 1, losses[losses.length - 1]);
-          await new Promise((r) => setTimeout(r, 0)); // yield to UI
+          await new Promise((r) => setTimeout(r, 8)); // breathe — keeps UI smooth
         }
       }
     } finally {
       this.training = false;
     }
+    if (!losses.length) return { trained: 0, loss: this.lastLoss };
     const tail = losses.slice(-60);
     this.lastLoss = Math.round((tail.reduce((a, b) => a + b, 0) / tail.length) * 1e4) / 1e4;
     this.lossHistory.push(this.lastLoss);

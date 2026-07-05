@@ -5,7 +5,9 @@
 //   2. Paste it below and push.
 window.SUPERAI_CONFIG = {
   GOOGLE_CLIENT_ID: "",          // e.g. "1234567890-abc.apps.googleusercontent.com"
-  AUTO_BRAIN_DOWNLOAD: true,     // auto-download the small Real Brain on first visit (WebGPU devices)
+  // Auto-download is OFF by default and NEVER runs on phones — a big model in
+  // the background is what froze mobiles. Desktops can opt in by setting true.
+  AUTO_BRAIN_DOWNLOAD: false,
   AUTO_BRAIN_MODEL: "SmolLM2-360M-Instruct-q4f16_1-MLC",
   DAILY_TOKEN_LIMIT: 20000,
 };

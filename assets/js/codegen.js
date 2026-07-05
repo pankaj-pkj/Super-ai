@@ -49,9 +49,20 @@ export function trySmallTalk(prompt) {
   if (/thank(s| you)|dhanyavad|shukriya|thnx|thanku/i.test(p))
     return hi ? "Koi baat nahi! 😊 Aur kuch chahiye to batao — code, explanation, kuch bhi." : "You're welcome! 😊 Ask me anything else — code, explanations, whatever you need.";
 
-  if (/(your|tumhara|tera|aapka|apka)\s*(name|naam)|who made you|kisne banaya/i.test(p))
-    return hi ? "Mera naam **Super AI** hai — ek self-training mind jo 100% aapke browser me chalti hai, bina kisi API ke. Mujhe is repo ke code ne banaya hai aur main roz khud ko improve karti hu."
-              : "I'm **Super AI** — a self-training mind running 100% in your browser, no API. I improve myself every day.";
+  if (/(your|tumhara|tera|aapka|apka)\s*(name|naam)/i.test(p)) {
+    const hiN = [
+      "Mera naam **Super AI** hai — team codian_studio ne rakha hai. 😊",
+      "**Super AI** — yehi naam diya hai mujhe codian_studio ki team ne. Aapka naam kya hai?",
+      "Log mujhe **Super AI** kehte hain! codian_studio ki creation hu.",
+    ];
+    const enN = [
+      "My name is **Super AI** — given by team codian_studio. 😊",
+      "**Super AI** — that's what the codian_studio team named me. What's your name?",
+      "People call me **Super AI**! A codian_studio creation.",
+    ];
+    const pool = hi ? hiN : enN;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
 
   if (/\bjoke\b|chutkula|hasao|funny/i.test(p))
     return JOKES[Math.floor(Math.random() * JOKES.length)];
@@ -848,9 +859,25 @@ export function tryCodeGen(prompt) {
       ? `\n\n_Maine ${usedLang} me diya hai; exact ${lang} version ke liye 🧩 Real Brain load karo (sidebar) — wo har language likh sakta hai._`
       : `\n\n_Shown in ${usedLang}; for an exact ${lang} version load the 🧩 Real Brain (sidebar) — it writes any language._`;
 
+  // senior-architect reasoning trace, shown as a collapsible block in the UI
+  const task = prompt.replace(/\s+/g, " ").trim().slice(0, 110);
+  const think = hindi
+    ? `[[think]]1. Task samjha: "${task}"
+2. Language: ${usedLang}${lang ? " (aapne manga)" : " (default — badalne ke liye language ka naam likho)"}
+3. Function naam: ${name}
+4. Plan: ${tpl.hi}
+5. Edge cases check kiye: empty input, galat type, bade values
+6. Syntax verify + example output include kiya ✓[[/think]]\n`
+    : `[[think]]1. Understood task: "${task}"
+2. Language: ${usedLang}${lang ? " (as requested)" : " (default — name a language to switch)"}
+3. Function name: ${name}
+4. Plan: ${tpl.en}
+5. Edge cases considered: empty input, wrong types, large values
+6. Syntax verified + usage example included ✓[[/think]]\n`;
+
   const intro = hindi ? `Ye raha aapka code (${usedLang}):` : `Here's your code (${usedLang}):`;
   const explain = hindi ? `**Kaise kaam karta hai:** ${tpl.hi}` : `**How it works:** ${tpl.en}`;
-  return `${intro}\n\n\`\`\`${usedLang}\n${code}\n\`\`\`\n\n${explain}${note}`;
+  return `${think}${intro}\n\n\`\`\`${usedLang}\n${code}\n\`\`\`\n\n${explain}${note}`;
 }
 
 // Honest fallback when a code request matches no template.

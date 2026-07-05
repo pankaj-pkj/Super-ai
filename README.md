@@ -47,6 +47,27 @@ todo app, login page, fetch API, …), plus safe **math evaluation**
 ("56*89 kitna hoga?" → 4984) and small talk — **in English and
 Hindi/Hinglish** ("palindrome check karne ka code banao" works).
 
+### 🔐 Login
+A polished sign-in screen (name + email, or guest). Each user gets their own
+daily token budget and their conversations/memory follow them. **Google
+Sign-In** activates automatically when you put an OAuth Client ID in
+`config.js` (pure client-side Google Identity Services — no backend needed).
+
+### 🌐 Swarm Intelligence & Immutable Knowledge Portability
+The entire trained mind — documents, **embedding vectors** (192-dim local
+embeddings of every sentence), strategy weights and **LoRA-style neural delta
+patches** (trained − reproducible seeded base) — exports to one standalone,
+model-agnostic **`knowledge_swarm_delta.json`** bundle. Inject it into any
+Super AI (or a future engine) to inherit 100% of the intelligence.
+Two browsers can also pair **directly over WebRTC data channels with no
+server** — signaling travels as copy-paste codes — and their minds sync both
+ways automatically: User B's AI immediately knows what User A's AI learned.
+
+### 🧠 Reasoning engine
+Code answers come with a collapsible **Reasoning** trace (task → language →
+plan → edge cases → verification), and the Real Brain is instructed to think
+step-by-step in `<thinking>` blocks before answering complex tasks.
+
 ### What runs in the browser
 - **~45 built-in knowledge entries** across 20+ languages, so it answers real
   code questions immediately (Python, JavaScript, TypeScript, Java, C, C++, C#,

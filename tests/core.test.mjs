@@ -37,7 +37,7 @@ ok("all 5 models respond");
 
 // greeting + identity
 assert.ok((await brain.respond("hello", "super-chat")).length > 20, "greeting responds");
-assert.ok((await brain.respond("who are you?", "super-chat")).includes("no external API"));
+assert.ok((await brain.respond("who are you?", "super-chat")).includes("codian_studio"));
 ok("greeting + identity");
 
 // unknown -> curiosity queue
@@ -173,5 +173,50 @@ await store.logChat("u_test", "super-chat", "history q", "history a", 5);
 const recent = await store.recentChats(5);
 assert.ok(recent.length >= 1 && recent[recent.length - 1].prompt === "history q", "recentChats works");
 ok("chat history restore data");
+
+// ============ NEW: identity = Super AI by team codian_studio, varied ============
+const id1 = await brain.respond("who are you?", "super-chat");
+const id2 = await brain.respond("tumhe kisne banaya?", "super-chat");
+const id3 = await brain.respond("who created you", "super-chat");
+assert.ok(id1.includes("codian_studio") && id1.includes("Super AI"), "identity mentions codian_studio");
+assert.ok(id2.includes("codian_studio"), "hindi creator mentions codian_studio");
+assert.ok(!(id1 === id2 && id2 === id3), "identity answers vary");
+ok("identity: codian_studio, varied answers");
+
+// ============ NEW: embeddings ============
+const { embed, cosine } = await import("../assets/js/vectors.js");
+const va = embed("python reverse a string with slicing");
+const vb = embed("how to reverse string in python");
+const vc = embed("rust ownership borrow checker lifetimes");
+assert.ok(cosine(va, vb) > cosine(va, vc), "similar sentences have higher cosine");
+ok(`vectors: cosine(similar)=${cosine(va, vb).toFixed(2)} > cosine(different)=${cosine(va, vc).toFixed(2)}`);
+
+// ============ NEW: LoRA-style delta export/import ============
+const delta = brain.llama.exportDelta();
+assert.equal(delta.format, "llamalite-delta-v1");
+const { LlamaLite } = await import("../assets/js/llamalite.js");
+const fresh = new LlamaLite(null);
+const before2 = fresh.emb[5][3];
+assert.ok(fresh.importDelta(delta, 1.0), "delta applies");
+assert.ok(Math.abs(fresh.emb[5][3] - brain.llama.emb[5][3]) < 0.01, "weights transferred via delta");
+assert.ok(fresh.stepsTrained === brain.llama.stepsTrained, "steps inherited");
+ok(`delta weights: base ${before2.toFixed(3)} -> merged ${fresh.emb[5][3].toFixed(3)} (matches trained)`);
+
+// ============ NEW: swarm bundle roundtrip ============
+const { exportBundle, importBundle } = await import("../assets/js/swarm.js");
+const bundle = await exportBundle(brain, store);
+assert.equal(bundle.format, "superai-swarm-bundle");
+assert.ok(bundle.docs.length > 10 && bundle.llama_delta, "bundle has docs + delta");
+// fresh peer store learns from the bundle
+const peerStore = new MemStore();
+const peerBrain = new SuperBrain(peerStore);
+await peerStore.setKV("kb_seeded", "2"); // matches KB_VERSION: skips seeding, proves transfer
+await peerBrain.init();
+const before3 = await peerStore.docCount();
+const r = await importBundle(peerBrain, peerStore, bundle);
+assert.ok(r.ok && r.docs > 10, "peer inherited docs: " + r.docs);
+const peerAns = await peerBrain.respond("what is machine learning", "super-chat");
+assert.ok(peerAns.length > 30 && !peerAns.includes("curiosity queue"), "peer can answer from inherited mind");
+ok(`swarm: peer went ${before3} -> ${await peerStore.docCount()} docs, answers from inherited knowledge`);
 
 console.log(`\nALL ${pass} CHECKS PASSED`);

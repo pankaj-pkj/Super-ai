@@ -5,6 +5,7 @@ import { tokenize, splitSentences, STOP, nowSec } from "./core.js";
 import { LlamaLite } from "./llamalite.js";
 import { KB } from "./knowledge.js";
 import { isHindi, tryMath, trySmallTalk, tryCodeGen, codeFallback } from "./codegen.js";
+import { embed, cosine } from "./vectors.js";
 
 export const MODELS = {
   "super-brain": { name: "Real Brain",  task: "Real LLM (Llama/Qwen) inside your browser — no API", cost: 3, icon: "🧩", tier: "LLM" },
@@ -18,7 +19,8 @@ export const MODELS = {
 const KB_VERSION = "2";
 
 const GREETING_RE = /^\s*(hi|hii+|hello|hey|namaste|namaskar|yo|hola|salaam|assalam)\b/i;
-const IDENTITY_RE = /\b(who are you|tum kaun|kaun ho|what are you|about you|aap kaun)\b/i;
+const IDENTITY_RE = /\b(who are you|tum kaun|kaun ho|what are you|about you|aap kaun|tu kya (hai|h)|kya ho tum)\b/i;
+const CREATOR_RE = /(who (made|created|built|designed) you|kisne banaya|kis ?ne banaya|tumhe kisne|kaun banaya|creator kaun|developer kaun|banane wala|owner kaun|malik kaun)/i;
 const CODE_HINT_RE = /\b(code|function|error|bug|compile|syntax|api|class|loop|array|pointer|async|sql|query|regex|algorithm|program|script)\b/i;
 
 export class SuperBrain {
@@ -27,6 +29,7 @@ export class SuperBrain {
     this.llama = new LlamaLite(store);
     this.index = new Map();       // word -> Set(sentenceId)
     this.sentById = new Map();
+    this.vecById = new Map();     // sentenceId -> embedding vector
     this.docFreq = new Map();
     this.markov = new Map();      // "w1|w2" -> {word:count}
     this.markovStarts = [];
@@ -64,6 +67,7 @@ export class SuperBrain {
   _indexSentence(sid, row) {
     if (this.sentById.has(sid)) return;
     this.sentById.set(sid, row);
+    this.vecById.set(sid, embed(row.sent + " " + (row.title || "")));
     // index the sentence AND its title, so trigger keywords in the title
     // (which persist across reloads) improve retrieval without cluttering answers
     const words = new Set(tokenize(row.sent + " " + (row.title || "")));
@@ -148,6 +152,7 @@ export class SuperBrain {
         matched.set(sid, (matched.get(sid) || 0) + 1);
       }
     }
+    const qVec = embed(query);
     const ranked = [];
     for (const [sid, sc0] of scores) {
       const row = this.sentById.get(sid);
@@ -157,7 +162,10 @@ export class SuperBrain {
       if (kind && row.kind === kind) sc *= 1.4;
       sc /= Math.sqrt(1 + row.sent.length / 200);
       const coverage = (matched.get(sid) || 0) / qWords.length;
-      ranked.push([sc * (0.4 + coverage), row, coverage]);
+      // hybrid: TF-IDF keyword score blended with embedding cosine similarity
+      const vec = this.vecById.get(sid);
+      const sim = vec ? Math.max(0, cosine(qVec, vec)) : 0;
+      ranked.push([sc * (0.4 + coverage) * (1 + sim), row, Math.max(coverage, sim)]);
     }
     ranked.sort((a, b) => b[0] - a[0]);
     return ranked.slice(0, top);
@@ -224,13 +232,8 @@ export class SuperBrain {
           ]);
     }
 
-    if (IDENTITY_RE.test(prompt)) {
-      const st = this.llama.stats();
-      const docs = await this.store.docCount();
-      const sents = await this.store.sentenceCount();
-      return hindi
-        ? `Main **Super AI** hu — bina kisi external API ke, 100% aapke browser me. Ab tak ${docs} documents (${sents} sentences) padh chuki hu, apna neural model ${st.steps_trained} steps train kiya hai, aur ${this.evolutionCycle} baar evolve hui hu. GitHub aur web se khud seekhti hu, aur har chat se bhi — is wali se bhi. 🧩 Real Brain select karo to asli Llama/Qwen LLM bhi mere andar chalega.`
-        : `I am Super AI — a fully self-contained mind with no external API. I run 100% in your browser, persist my knowledge in IndexedDB, and keep learning 24×7. So far I've read ${docs} documents (${sents} sentences), trained my own neural model for ${st.steps_trained} steps, and evolved ${this.evolutionCycle} times. Pick the 🧩 Real Brain to run an actual Llama/Qwen LLM inside me.`;
+    if (IDENTITY_RE.test(prompt) || CREATOR_RE.test(prompt)) {
+      return this._identityAnswer(hindi);
     }
 
     // universal skills first (except raw-neural model): memory, small talk, math, code
@@ -253,6 +256,31 @@ export class SuperBrain {
     if (model === "super-sage") return this._respSage(prompt);
     if (model === "super-llama") return this._respLlama(prompt);
     return this._respChat(prompt);
+  }
+
+  // ---------------- identity (varied, never a fixed script) ----------------
+  _identityAnswer(hindi) {
+    const HI = [
+      "Main **Super AI** hu 🤖 — mujhe **team codian_studio** ne banaya hai. Coding, reasoning aur normal sawaal — sab mera kaam hai. Aap batao, kya banaye?",
+      "Naam hai **Super AI** — codian_studio team ki creation. Khaas baat? Main 100% aapke browser me chalti hu aur 24×7 khud ko improve karti rehti hu.",
+      "Super AI bolte hain mujhe! **codian_studio** ke engineers ne mujhe design kiya hai — ek self-learning mind jo code likhti hai aur aapke sawalon ke jawab deti hai.",
+      "Main codian_studio ki banayi hui **Super AI** hu 🧠 — meri knowledge, meri neural training, sab kuch aapke device par hi rehta hai. Poochho jo poochhna hai!",
+      "Ek AI jo kabhi rukti nahi — **Super AI**, made by **team codian_studio**. Abhi bhi background me seekh rahi hu. Aapke liye kya karu?",
+      "Mujhe **team codian_studio** ne banaya hai aur naam diya **Super AI**. Coding meri specialty hai, par normal baat-cheet bhi karti hu. 😄",
+    ];
+    const EN = [
+      "I'm **Super AI** 🤖 — built by **team codian_studio**. Coding, reasoning, everyday questions — all mine. What shall we build?",
+      "The name's **Super AI**, a creation of the codian_studio team. My specialty: I run 100% in your browser and improve myself 24×7.",
+      "They call me Super AI! Engineered by **codian_studio** — a self-learning mind that writes code and answers your questions.",
+      "I'm Super AI, made by **team codian_studio** 🧠 — my knowledge and neural training all live right on your device. Ask me anything!",
+      "An AI that never sleeps — **Super AI**, by team codian_studio. I'm literally learning in the background right now. How can I help?",
+      "**Team codian_studio** built me and named me Super AI. Coding is my specialty, but I'm happy to just chat too. 😄",
+    ];
+    const pool = hindi ? HI : EN;
+    let idx = Math.floor(Math.random() * pool.length);
+    if (idx === this._lastIdentityIdx) idx = (idx + 1) % pool.length; // never repeat back-to-back
+    this._lastIdentityIdx = idx;
+    return pool[idx];
   }
 
   // ---------------- personal memory (remembers the user) ----------------

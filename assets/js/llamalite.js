@@ -8,14 +8,35 @@ const CTX = 8;   // context window (chars)
 const EMB = 16;  // embedding dim
 const HID = 32;  // hidden dim
 
-function randMatrix(rows, cols, scale) {
+// Deterministic PRNG so base weights are reproducible on every device.
+// That makes "delta weights" (current − base) meaningful for swarm sync:
+// any peer can regenerate the identical base and apply someone else's delta.
+function mulberry32(seed) {
+  return function () {
+    seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function randMatrix(rows, cols, scale, rng) {
   const m = new Array(rows);
   for (let i = 0; i < rows; i++) {
     const row = new Float64Array(cols);
-    for (let j = 0; j < cols; j++) row[j] = (Math.random() * 2 - 1) * scale;
+    for (let j = 0; j < cols; j++) row[j] = (rng() * 2 - 1) * scale;
     m[i] = row;
   }
   return m;
+}
+
+function baseWeights() {
+  const rng = mulberry32(1337);
+  return {
+    emb: randMatrix(V, EMB, 0.08, rng),
+    w1: randMatrix(HID, CTX * EMB, 0.06, rng),
+    w2: randMatrix(V, HID, 0.06, rng),
+  };
 }
 
 function silu(x) {
@@ -39,11 +60,55 @@ export class LlamaLite {
   }
 
   _initWeights() {
-    this.emb = randMatrix(V, EMB, 0.08);
-    this.w1 = randMatrix(HID, CTX * EMB, 0.06);
+    const base = baseWeights();
+    this.emb = base.emb;
+    this.w1 = base.w1;
     this.b1 = new Float64Array(HID);
-    this.w2 = randMatrix(V, HID, 0.06);
+    this.w2 = base.w2;
     this.b2 = new Float64Array(V);
+  }
+
+  // ---------------- LoRA-style delta weights (swarm portability) ----------------
+  // delta = trained − base. Any peer regenerates the same base (seeded PRNG)
+  // and can merge this patch, inheriting the training without the raw data.
+  exportDelta() {
+    const base = baseWeights();
+    const diff = (cur, ref) => cur.map((row, i) =>
+      Array.from(row, (x, j) => Math.round((x - ref[i][j]) * 1e4) / 1e4));
+    return {
+      format: "llamalite-delta-v1",
+      steps: this.stepsTrained,
+      loss: this.lastLoss,
+      emb: diff(this.emb, base.emb),
+      w1: diff(this.w1, base.w1),
+      b1: Array.from(this.b1, (x) => Math.round(x * 1e4) / 1e4),
+      w2: diff(this.w2, base.w2),
+      b2: Array.from(this.b2, (x) => Math.round(x * 1e4) / 1e4),
+    };
+  }
+
+  // Merge a peer's delta into this model (weighted average of patches).
+  importDelta(delta, weight = 0.5) {
+    if (!delta || delta.format !== "llamalite-delta-v1") return false;
+    const base = baseWeights();
+    const mix = (cur, ref, patch) => {
+      for (let i = 0; i < cur.length; i++)
+        for (let j = 0; j < cur[i].length; j++) {
+          const mine = cur[i][j] - ref[i][j];
+          cur[i][j] = ref[i][j] + mine * (1 - weight) + patch[i][j] * weight;
+        }
+    };
+    try {
+      mix(this.emb, base.emb, delta.emb);
+      mix(this.w1, base.w1, delta.w1);
+      mix(this.w2, base.w2, delta.w2);
+      for (let i = 0; i < this.b1.length; i++) this.b1[i] = this.b1[i] * (1 - weight) + delta.b1[i] * weight;
+      for (let i = 0; i < this.b2.length; i++) this.b2[i] = this.b2[i] * (1 - weight) + delta.b2[i] * weight;
+      this.stepsTrained = Math.max(this.stepsTrained, delta.steps || 0);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   encode(text) {

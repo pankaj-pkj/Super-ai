@@ -46,7 +46,7 @@ async function fetchText(url, timeoutMs = 15000) {
 }
 
 export class Harvester {
-  constructor(brain, store, intervalSec = 300) {
+  constructor(brain, store, intervalSec = 120) {
     this.brain = brain;
     this.store = store;
     this.intervalSec = intervalSec;
@@ -54,6 +54,7 @@ export class Harvester {
     this.lastRun = null;
     this.lastReport = {};
     this._timer = null;
+    this._microTimer = null;
     this.onUpdate = null; // callback to refresh UI
   }
 
@@ -163,6 +164,16 @@ export class Harvester {
       this._timer = setTimeout(tick, this.intervalSec * 1000);
     };
     this._timer = setTimeout(tick, this.intervalSec * 1000);
+
+    // 24×7 micro-training: a small neural pass every 60s, so the mind is
+    // literally never idle (cheap enough to not heat up phones)
+    this._microTimer = setInterval(async () => {
+      if (!this.enabled || this.brain.llama.training) return;
+      try {
+        if ((await this.store.docCount()) > 2) await this.brain.llama.train(
+          await this.store.corpusText(30000), 30, 0.03);
+      } catch { /* keep the loop alive */ }
+    }, 60000);
   }
 
   status() {

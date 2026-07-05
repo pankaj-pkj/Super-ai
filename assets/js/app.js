@@ -7,15 +7,14 @@ import { Harvester } from "./harvester.js";
 import { I18N } from "./knowledge.js";
 import { escapeHtml } from "./core.js";
 import { RealBrain, BRAIN_MODELS } from "./realbrain.js";
+import { Auth } from "./auth.js";
+import { exportBundle, importBundle, SwarmLink } from "./swarm.js";
 
 const $ = (id) => document.getElementById(id);
 
 // ---------------- identity + prefs ----------------
-let userId = localStorage.getItem("superai_uid");
-if (!userId) {
-  userId = "u_" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-  localStorage.setItem("superai_uid", userId);
-}
+const auth = new Auth();
+let userId = auth.loggedIn ? auth.userId : "anonymous";
 let currentModel = localStorage.getItem("superai_model") || "super-chat";
 let lang = localStorage.getItem("superai_lang") || "en";
 let busy = false;
@@ -35,17 +34,54 @@ window.uiZoom = function (delta) {
 };
 applyZoom();
 
+// ---------------- login gate ----------------
+function showLogin() {
+  $("loginOverlay").classList.add("show");
+  auth.mountGoogleButton($("googleBtn"), finishLogin);
+}
+function finishLogin() {
+  userId = auth.userId;
+  $("loginOverlay").classList.remove("show");
+  renderProfile();
+  refreshTokens();
+  toast((lang === "hi" ? "Swagat hai, " : "Welcome, ") + auth.profile.name + "! 👋", "good");
+}
+window.doEmailLogin = function () {
+  const r = auth.loginEmail($("loginName").value, $("loginEmail").value);
+  if (!r.ok) { $("loginErr").textContent = r.error; return; }
+  finishLogin();
+};
+window.doGuestLogin = function () { auth.loginGuest(); finishLogin(); };
+window.doLogout = function () {
+  auth.logout();
+  location.reload();
+};
+function renderProfile() {
+  const el = $("profileChip");
+  if (!el) return;
+  if (auth.loggedIn) {
+    el.style.display = "flex";
+    el.title = auth.profile.email + " — tap to logout";
+    el.innerHTML = auth.profile.picture
+      ? `<img src="${auth.profile.picture}" alt="">`
+      : `<span>${auth.initials}</span>`;
+  } else {
+    el.style.display = "none";
+  }
+}
+
 // ---------------- boot ----------------
 (async function boot() {
   applyI18n();
   // ask the browser to never evict our storage (model cache + knowledge)
   try { navigator.storage?.persist?.(); } catch { /* optional */ }
+  if (!auth.loggedIn) showLogin(); else renderProfile();
   store = await createStore();
   brain = new SuperBrain(store);
   await brain.init();
   bank = new TokenBank(store);
   await bank.init();
-  harvester = new Harvester(brain, store, 300);
+  harvester = new Harvester(brain, store, 120);
   harvester.onUpdate = () => { refreshStats(); refreshEvolution(); };
 
   loadModels();
@@ -54,7 +90,7 @@ applyZoom();
   await refreshEvolution();
   await restoreHistory();
 
-  realBrain.userName = await store.getKV("user_name");
+  realBrain.userName = auth.profile?.name || (await store.getKV("user_name"));
   autoLoadBrain(); // reload cached Real Brain in the background (no re-download)
 
   harvester.start(); // 24×7 self-learning while the tab is open
@@ -88,7 +124,17 @@ async function restoreHistory() {
 // if the user loaded a Real Brain before, load it again from the browser
 // cache automatically — no click, no re-download
 async function autoLoadBrain() {
-  const saved = localStorage.getItem("superai_brain_model");
+  let saved = localStorage.getItem("superai_brain_model");
+  const cfg = window.SUPERAI_CONFIG || {};
+  // first visit: auto-download the small Real Brain in the background,
+  // so every user gets a real LLM without clicking anything
+  if (!saved && cfg.AUTO_BRAIN_DOWNLOAD && realBrain.supported()
+      && !localStorage.getItem("superai_brain_optout")) {
+    saved = cfg.AUTO_BRAIN_MODEL || "SmolLM2-360M-Instruct-q4f16_1-MLC";
+    toast(lang === "hi"
+      ? "\u{1F9E9} Real Brain background me download ho raha hai (one-time, ~270MB)\u2026"
+      : "\u{1F9E9} Downloading the Real Brain in the background (one-time, ~270MB)\u2026");
+  }
   if (!saved || !realBrain.supported() || realBrain.ready) return;
   setBrainBadge(lang === "hi" ? "cache se load ho raha…" : "loading from cache…");
   try {
@@ -98,8 +144,10 @@ async function autoLoadBrain() {
     });
     setBrainBadge("ready ✓");
     toast("🧩 Real Brain ready (from cache) — " + saved.split("-q4")[0], "good");
+    localStorage.setItem("superai_brain_model", saved); // remember for next visit
   } catch {
     setBrainBadge("");
+    localStorage.setItem("superai_brain_optout", "1"); // don't retry-loop on failure
   }
 }
 
@@ -237,6 +285,11 @@ function md(s) {
   h = h.replace(/\*\*([^*\n]{1,200})\*\*/g, "<b>$1</b>");
   h = h.replace(/(^|[\s(])_([^_\n]{3,160})_(?=$|[\s.,;:)!?])/gm, "$1<em>$2</em>");
   h = h.replace(/^[\u2022*-] /gm, "&bull; ");
+  // reasoning traces -> collapsible blocks (local [[think]] + Real Brain <thinking>)
+  h = h.replace(/\[\[think\]\]([\s\S]*?)(\[\[\/think\]\]|$)/g,
+    '<details class="think"><summary>\u{1F9E0} Reasoning</summary><div>$1</div></details>');
+  h = h.replace(/&lt;thinking&gt;([\s\S]*?)(&lt;\/thinking&gt;|$)/gi,
+    '<details class="think"><summary>\u{1F9E0} Thinking</summary><div>$1</div></details>');
   h = h.replace(/\uE000(\d+)\uE001/g, (_, i) => {
     const { code, lang: cl } = codes[+i];
     return `<div class="codebox"><div class="codebar"><span class="cb-lang">${cl || "code"}</span>` +
@@ -419,6 +472,81 @@ window.trainNeural = async function () {
 window.selfImprove = async function () {
   toast("⚡ Self-improvement cycle: GitHub + curiosity + neural training…");
   harvester.cycle().then(() => { refreshStats(); refreshEvolution(); });
+};
+
+// ---------------- Swarm Intelligence (export / import / P2P) ----------------
+let swarmLink = null;
+
+window.openSwarm = function () { $("swarmOverlay").classList.add("show"); $("swarmStatus").textContent = ""; };
+window.closeSwarm = function () { $("swarmOverlay").classList.remove("show"); swarmLink?.close(); swarmLink = null; };
+
+window.swarmExport = async function () {
+  $("swarmStatus").textContent = "packing the mind…";
+  const bundle = await exportBundle(brain, store);
+  const blob = new Blob([JSON.stringify(bundle)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "knowledge_swarm_delta.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  $("swarmStatus").textContent = `exported ${bundle.docs.length} docs + neural delta ✓`;
+  brain.evolve("swarm-export", `mind exported as knowledge_swarm_delta.json (${bundle.docs.length} docs)`);
+};
+
+window.swarmImport = function () { $("swarmFile").click(); };
+window.swarmImportFile = async function (input) {
+  const file = input.files[0];
+  if (!file) return;
+  $("swarmStatus").textContent = "merging peer mind…";
+  try {
+    const bundle = JSON.parse(await file.text());
+    const r = await importBundle(brain, store, bundle);
+    $("swarmStatus").textContent = r.ok
+      ? `merged: +${r.docs} docs, +${r.sents} sentences, neural ${r.neural ? "✓" : "—"}`
+      : "⚠️ " + r.error;
+    refreshStats(); refreshEvolution();
+  } catch (e) {
+    $("swarmStatus").textContent = "⚠️ invalid file: " + e.message;
+  }
+  input.value = "";
+};
+
+async function onPeerBundle(bundle) {
+  const r = await importBundle(brain, store, bundle);
+  $("swarmStatus").textContent = r.ok
+    ? `🔗 peer mind merged: +${r.docs} docs, neural ${r.neural ? "✓" : "—"}`
+    : "⚠️ " + r.error;
+  refreshStats(); refreshEvolution();
+  toast("🔗 Swarm sync complete — this AI now knows what the peer's AI learned", "good");
+}
+
+window.swarmHost = async function () {
+  swarmLink = new SwarmLink(onPeerBundle, (t) => { $("swarmStatus").textContent = t; syncWhenOpen(); });
+  $("swarmStatus").textContent = "creating pairing code…";
+  const code = await swarmLink.createOffer();
+  $("swarmCode").value = code;
+  $("swarmStatus").textContent = "1) Send this code to your friend  2) paste their reply below  3) Connect";
+};
+window.swarmJoin = async function () {
+  const code = $("swarmCode").value.trim();
+  if (!code) { $("swarmStatus").textContent = "paste the friend's code first"; return; }
+  swarmLink = new SwarmLink(onPeerBundle, (t) => { $("swarmStatus").textContent = t; syncWhenOpen(); });
+  const answer = await swarmLink.acceptOffer(code);
+  $("swarmCode").value = answer;
+  $("swarmStatus").textContent = "reply code ready — send it back to the host";
+};
+window.swarmConnect = async function () {
+  if (!swarmLink) { $("swarmStatus").textContent = "create a code first"; return; }
+  await swarmLink.acceptAnswer($("swarmCode").value);
+};
+function syncWhenOpen() {
+  // once the channel opens, both sides push their minds automatically
+  if (swarmLink?.channel?.readyState === "open") {
+    exportBundle(brain, store).then((b) => swarmLink.sendBundle(b));
+  }
+}
+window.copySwarmCode = function () {
+  navigator.clipboard.writeText($("swarmCode").value).then(() => toast("code copied ✓", "good"));
 };
 
 // ---------------- Real Brain modal ----------------

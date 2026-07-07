@@ -5,3 +5,6 @@ superai_state.db*
 node_modules/
 tests/node_modules/
 backend/config.php
+
+# never track uploaded reference archives
+*.zip

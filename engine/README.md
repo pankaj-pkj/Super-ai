@@ -6,8 +6,22 @@ asyncio + Pydantic v2). Runs on your own cloud/GPU (cPanel) and portable envs
 your machine.** (Optional hosted-API presets exist for convenience, but they're
 strictly opt-in; the default powerful path is 100% local.)
 
-Roadmap: **Module 1 ✅** · **Module 2 ✅** · **Module 3 ✅** · Modules 4–6
-(memory compaction, auto-verifiers, swarm/sandbox) land next.
+Roadmap: **Module 1 ✅** · **Module 2 ✅** · **Module 3 ✅** · **Module 4 ✅** ·
+Modules 5–6 (auto-verifiers, swarm/sandbox) land next.
+
+## 🌐 One brain for everyone — Central Hub
+
+So your model is powerful for **everyone**, not weak in someone else's browser:
+the server hosts ONE brain and every client (web, mobile, other instances)
+connects to it. Nobody runs a weak local model — all share the same powerful,
+self-improving mind and knowledge.
+
+```bash
+pip install fastapi "uvicorn[standard]"
+SUPERAI_HUB_MODEL=glm-9b uvicorn engine.hub:app --host 0.0.0.0 --port 8000
+```
+Endpoints: `POST /chat` (REST, `stream:true` for SSE), `WS /ws` (loss-free
+streaming via the Module-3 FlushGate), `GET /health` `/tools` `/soul`.
 
 ## 🧠 The powerful brain — 100% local, ZERO API
 
@@ -70,11 +84,20 @@ arrives with Module 6's sandbox (which replaces `SafeBashExecutor`).
 
 Transport-agnostic: give `FlushGate` any async `sink(batch)->bool`.
 
+## Module 4 — Memory Compaction & Context Collapse
+
+`microcompact_messages` / `MemoryCompactor` prevent token overflow: system
+prompt pinned, recent working memory kept verbatim, and older verbose tool/
+terminal output collapsed (head+tail + error/signal lines) — summarized by the
+LLM when online, deterministically offline. `find_compact_boundary` marks where
+"recent" begins; the result is guaranteed under `ContextBudget.max_tokens`.
+
 ## Tests (all fully offline)
 ```bash
-python3 engine/tests/test_module1.py   # two-model + soul     (8)
-python3 engine/tests/test_module2.py   # task machine + dream  (10)
-python3 engine/tests/test_module3.py   # sync/flush gate       (5)
+python3 engine/tests/test_module1.py   # two-model + soul       (8)
+python3 engine/tests/test_module2.py   # task machine + dream    (10)
+python3 engine/tests/test_module3.py   # sync/flush gate         (5)
+python3 engine/tests/test_module4.py   # memory compaction       (8)
 ```
 
 ## Module 1 — Two-Model System & Soul Engine

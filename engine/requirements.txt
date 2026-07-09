@@ -1,6 +1,13 @@
-# Super AI Engine — core deps
+# Super AI Engine — core deps (no API required)
 pydantic>=2.5
 httpx>=0.27
-# Module 3+ (added as modules land):
-# fastapi>=0.110
-# uvicorn[standard]>=0.29
+
+# Central Hub (serve one brain to all clients)
+fastapi>=0.110
+uvicorn[standard]>=0.29
+
+# Local NO-API brain on your own GPU (install after you have a GPU):
+# torch
+# transformers
+# accelerate
+# bitsandbytes      # optional, for 4-bit (less VRAM)

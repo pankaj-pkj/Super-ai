@@ -81,3 +81,36 @@ def apply_preset(cfg: EngineConfig, name: str, api_key: str = "") -> EngineConfi
 
 def list_presets() -> str:
     return "\n".join(f"{k:12} → {v.chat_model:28} {v.note}" for k, v in PRESETS.items())
+
+
+# ---------------------------------------------------------------------------
+# LOCAL, NO-API BRAIN — runs open models on YOUR GPU, nothing leaves the box
+# ---------------------------------------------------------------------------
+# Curated open models that run fully locally (no API, no cloud). VRAM is rough
+# fp16; 4-bit roughly a third. Pick by your GPU.
+LOCAL_MODELS: Dict[str, str] = {
+    "coder-7b":  "Qwen/Qwen2.5-Coder-7B-Instruct",     # ~16GB fp16 / ~6GB 4-bit — best value for code
+    "coder-32b": "Qwen/Qwen2.5-Coder-32B-Instruct",    # 24GB+ / 4-bit — strong coding
+    "glm-9b":    "zai-org/GLM-4-9B-0414",              # GLM locally on one GPU — your "real mind"
+    "llama-8b":  "meta-llama/Llama-3.1-8B-Instruct",   # general
+    "qwen-7b":   "Qwen/Qwen2.5-7B-Instruct",           # general
+}
+
+
+def local_brain(model="coder-7b", cfg: EngineConfig | None = None, **loader_kwargs):
+    """Build an LLMClient whose brain runs IN-PROCESS on your GPU — zero API.
+
+    `model` is a LOCAL_MODELS key or a raw Hugging Face model id.
+
+        from engine.providers import local_brain
+        from engine.two_model import TwoModelSystem
+        ai = TwoModelSystem(llm=local_brain("glm-9b"))     # GLM on your GPU, no API
+        ai = TwoModelSystem(llm=local_brain("coder-7b", load_in_4bit=True))
+    """
+    from .llm import LLMClient  # local import avoids import cycle
+    from .local_llm import LocalHFProvider
+
+    model_id = LOCAL_MODELS.get(model, model)
+    cfg = cfg or EngineConfig()
+    return LLMClient(cfg, LocalHFProvider(model_id, **loader_kwargs))
+

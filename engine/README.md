@@ -1,28 +1,51 @@
-# Super AI Engine
+# Super AI Engine — 🔒 NO API. Your model, your GPU, your box.
 
 Autonomous, self-improving AI software-engineer backend (Python 3.11+,
-asyncio + Pydantic v2). Runs on cloud (cPanel) and portable envs (Termux).
+asyncio + Pydantic v2). Runs on your own cloud/GPU (cPanel) and portable envs
+(Termux). **The brain runs LOCALLY — no external API, no keys, nothing leaves
+your machine.** (Optional hosted-API presets exist for convenience, but they're
+strictly opt-in; the default powerful path is 100% local.)
 
-Roadmap: **Module 1 ✅** · **Module 2 ✅** · Modules 3–6 (sync/flush gate,
-memory compaction, auto-verifiers, swarm/sandbox) land next.
+Roadmap: **Module 1 ✅** · **Module 2 ✅** · **Module 3 ✅** · Modules 4–6
+(memory compaction, auto-verifiers, swarm/sandbox) land next.
 
-## The "mind" — plug in a real model (GLM / Groq / …)
+## 🧠 The powerful brain — 100% local, ZERO API
 
-Intelligence is a **model you call**, not code you copy. The engine is
-OpenAI-compatible, so switch the brain in one line via `engine/providers.py`:
+Intelligence is a **model**, not repo code. Run a real open model IN-PROCESS on
+your GPU — nothing is ever sent anywhere:
 
 ```python
-from engine.config import EngineConfig
-from engine.providers import apply_preset
+from engine.providers import local_brain
 from engine.two_model import TwoModelSystem
 
-cfg = apply_preset(EngineConfig(), "glm", api_key="your_zhipu_key")  # glm-4-flash is FREE
-ai = TwoModelSystem(cfg)
+ai = TwoModelSystem(llm=local_brain("glm-9b"))                   # GLM on your GPU, no API
+ai = TwoModelSystem(llm=local_brain("coder-7b", load_in_4bit=True))  # less VRAM
 ```
 
-Presets: `glm` (Zhipu — free flash tier), `groq` (free Llama 3.3 70B),
-`openrouter` (GLM/Qwen/Llama with one key), `openai`, `ollama` (local).
-Run `python3 -c "from engine.providers import list_presets; print(list_presets())"`.
+After you have a GPU:
+```bash
+pip install torch transformers accelerate       # + bitsandbytes for 4-bit
+```
+
+Curated local models (no API, pick by VRAM):
+
+| key | model | notes |
+|---|---|---|
+| `coder-7b` | Qwen2.5-Coder-7B | best value for code (~16GB fp16 / ~6GB 4-bit) |
+| `coder-32b` | Qwen2.5-Coder-32B | strong coding (24GB+ / 4-bit) |
+| `glm-9b` | GLM-4-9B | **GLM on one GPU — your "real mind"** |
+| `llama-8b` | Llama-3.1-8B | general |
+
+Runs even without a GPU/model for development: an **OfflineProvider** gives
+deterministic responses so the whole engine + self-evolution loop is testable
+anywhere, no downloads.
+
+<details><summary>Optional hosted-API presets (opt-in, not required)</summary>
+
+If you ever want a cloud model instead of your GPU, `apply_preset(cfg, name,
+api_key)` supports `glm` (Zhipu free flash), `groq`, `openrouter`, `openai`,
+`ollama` (localhost). This is optional — the local path above needs no API.
+</details>
 
 ## Module 2 — Task & Agent State Machine
 
@@ -35,6 +58,24 @@ Run `python3 -c "from engine.providers import list_presets; print(list_presets()
 
 `local_agent` tasks run the Module-1 `TwoModelSystem`. Full process isolation
 arrives with Module 6's sandbox (which replaces `SafeBashExecutor`).
+
+## Module 3 — Network Sync & Flush Gate
+
+| Class | Role |
+|---|---|
+| `SerialBatchEventUploader` | monotonic seq, ordered outbox, batch flush, retry-until-acked, reconnect replay — **zero data loss** |
+| `FlushGate` | backpressure (`emit()` awaits when the outbox is full) + size/time flush timing |
+| `InboundChannel` | frontend→backend delivery, in-order + exactly-once (dedup) |
+| `websocket_sink` / `sse_sink` | thin adapters for WebSocket or SSE transports |
+
+Transport-agnostic: give `FlushGate` any async `sink(batch)->bool`.
+
+## Tests (all fully offline)
+```bash
+python3 engine/tests/test_module1.py   # two-model + soul     (8)
+python3 engine/tests/test_module2.py   # task machine + dream  (10)
+python3 engine/tests/test_module3.py   # sync/flush gate       (5)
+```
 
 ## Module 1 — Two-Model System & Soul Engine
 
@@ -65,10 +106,5 @@ async def main():
 
 asyncio.run(main())
 ```
-Without an API key it runs in **offline mode** (deterministic responses + the
+Without a GPU/model it runs in **offline mode** (deterministic responses + the
 full soul-evolution loop) so you can develop and test anywhere.
-
-### Test
-```bash
-python3 engine/tests/test_module1.py   # 8 checks, fully offline
-```

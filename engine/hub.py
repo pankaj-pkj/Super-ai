@@ -90,9 +90,11 @@ async def health():
 async def chat(inp: ChatIn):
     """Every client hits this ONE brain — same power for everyone."""
     if inp.stream:
+        import json as _json
         async def gen():
+            # JSON-encode each token so multi-line code never breaks SSE framing
             async for tok in state.agent.chat_stream(inp.message):
-                yield f"data: {tok}\n\n"
+                yield f"data: {_json.dumps(tok)}\n\n"
             yield "data: [DONE]\n\n"
         return StreamingResponse(gen(), media_type="text/event-stream")
     result = await state.agent.handle(inp.message)

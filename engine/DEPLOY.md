@@ -113,15 +113,17 @@ Your website is already built. Deploy it and point it at the brain.
 
 1. **Upload the site** to `public_html` (Git Version Control clone, or upload —
    see the earlier steps / HOSTING.md).
-2. **Point the frontend at the Hub.** In `config.js`:
+2. **Point the frontend at the Hub.** In `config.js` set ONE line:
    ```js
    window.SUPERAI_CONFIG = {
-     BACKEND_URL: "https://brain.yourdomain.com",   // your GPU Hub from Part 1c
+     HUB_URL: "https://brain.yourdomain.com",   // your GPU Hub from Part 1c
      ...
    };
    ```
-   (Ask me to wire the browser chat to call the Hub's `/chat` + `/ws` — a small
-   frontend change so every visitor uses the one powerful brain.)
+   That's it — the frontend is already wired. On load it health-checks the Hub;
+   if reachable, every visitor's chat **streams from that one shared brain**
+   (a "☁ Cloud Brain connected" toast confirms it). If the Hub is down it falls
+   back to the on-device brain automatically — nothing breaks.
 3. **Optional PHP backend + 24×7 learner** (accounts, server-side crawl): follow
    `HOSTING.md` (database, `backend/config.php`, cron job).
 

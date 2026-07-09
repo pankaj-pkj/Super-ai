@@ -4,8 +4,14 @@
 //      (type: Web application; add your GitHub Pages URL to Authorized JavaScript origins)
 //   2. Paste it below and push.
 window.SUPERAI_CONFIG = {
-  // Your cPanel backend URL (folder that contains /api). Leave blank to run
-  // fully local (on-device brain only). Example:
+  // Your GPU Hub URL (the powerful shared brain from engine/hub.py). When set
+  // and reachable, EVERY visitor chats with this one server model — no weak
+  // per-browser model. Leave blank to use the on-device brain. Example:
+  //   "https://brain.yourdomain.com"
+  HUB_URL: "",
+
+  // Your cPanel backend URL (folder that contains /api) for accounts + 24×7
+  // learning. Leave blank to run fully local. Example:
   //   "https://yourdomain.com/backend"
   BACKEND_URL: "",
 

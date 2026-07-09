@@ -11,12 +11,14 @@ import { Auth } from "./auth.js";
 import { exportBundle, importBundle, SwarmLink } from "./swarm.js";
 import { isMobileDevice } from "./core.js";
 import { Backend } from "./backend.js";
+import { HubClient } from "./hubclient.js";
 
 const $ = (id) => document.getElementById(id);
 
 // ---------------- identity + prefs ----------------
 const auth = new Auth();
 const backend = new Backend();
+const hub = new HubClient();
 let userId = auth.loggedIn ? auth.userId : "anonymous";
 let currentModel = localStorage.getItem("superai_model") || "super-chat";
 let lang = localStorage.getItem("superai_lang") || "en";
@@ -100,6 +102,13 @@ function renderProfile() {
   await refreshStats();
   await refreshEvolution();
   await restoreHistory();
+
+  // Connect to the GPU Hub if configured — then everyone shares the one powerful brain.
+  if (hub.enabled) {
+    hub.health().then((h) => {
+      if (hub.active) toast("☁ Cloud Brain connected — powered by the server model", "good");
+    });
+  }
 
   realBrain.userName = auth.profile?.name || (await store.getKV("user_name"));
 
@@ -409,14 +418,14 @@ window.send = async function () {
 
     const t0 = performance.now();
     let response, aiMsg;
-    // When the Real Brain is loaded, EVERY text model borrows it (so Super Chat,
-    // Super Sage etc. get a real brain). Super Llama stays the raw tiny net.
     // Identity/creator questions always answer locally (guaranteed codian_studio).
     const CREATOR = /(who (made|created|built|are) you|kisne banaya|tum kaun|kaun ho|aap kaun|tumhe kisne)/i;
-    const useBrain = currentModel === "super-brain" ||
-      (realBrain.ready && currentModel !== "super-llama" && !CREATOR.test(text));
+    // Priority: GPU Hub (shared powerful brain) → on-device Neo → local engine.
+    const useHub = hub.active && !CREATOR.test(text);
+    const useBrain = !useHub && (currentModel === "super-brain" ||
+      (realBrain.ready && currentModel !== "super-llama" && !CREATOR.test(text)));
 
-    if (currentModel === "super-brain" && !realBrain.ready) {
+    if (currentModel === "super-brain" && !realBrain.ready && !hub.active) {
       typing.remove();
       openBrainModal();
       addMsg("ai", "🧩 " + (lang === "hi"
@@ -425,7 +434,31 @@ window.send = async function () {
       busy = false; $("sendBtn").disabled = false; return;
     }
 
-    if (useBrain) {
+    if (useHub) {
+      // stream from the ONE shared server brain; throttled paint so big code is smooth
+      typing.remove();
+      aiMsg = addMsg("ai", '<span class="caret"></span>');
+      const bubble = aiMsg.querySelector(".bubble");
+      let latest = "", done = false;
+      const painter = setInterval(() => {
+        if (latest) {
+          bubble.innerHTML = md(latest) + (done ? "" : '<span class="caret"></span>');
+          $("chat").scrollTop = $("chat").scrollHeight;
+        }
+        if (done) clearInterval(painter);
+      }, 80);
+      try {
+        response = await hub.chatStream(text, (partial) => { latest = partial; });
+      } catch (err) {
+        // Hub went down mid-session → fall back to the local engine, no data lost
+        hub.active = false;
+        response = await brain.respond(text, currentModel);
+      } finally {
+        done = true;
+      }
+      latest = response;
+      bubble.innerHTML = md(response);
+    } else if (useBrain) {
       // stream into ONE bubble, throttled to ~12fps so big code never hangs the tab
       typing.remove();
       aiMsg = addMsg("ai", '<span class="caret"></span>');
@@ -457,7 +490,7 @@ window.send = async function () {
     const chatId = await store.logChat(userId, currentModel, text, response, cost, sessionId);
     // learn from every conversation (the user is teaching it), then refresh history
     await brain.learnFromChat(text);
-    if (useBrain && response) await brain.learnText(`brain:${Date.now()}`, "AI answer", response, "chat");
+    if ((useBrain || useHub) && response) await brain.learnText(`brain:${Date.now()}`, "AI answer", response, "chat");
     renderSessions();
 
     const meta = aiMsg.querySelector(".meta");

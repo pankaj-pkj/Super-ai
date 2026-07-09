@@ -8,3 +8,4 @@ backend/config.php
 
 # never track uploaded reference archives
 *.zip
+superai_data/

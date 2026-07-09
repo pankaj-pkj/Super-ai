@@ -1,0 +1,6 @@
+# Super AI Engine — core deps
+pydantic>=2.5
+httpx>=0.27
+# Module 3+ (added as modules land):
+# fastapi>=0.110
+# uvicorn[standard]>=0.29

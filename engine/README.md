@@ -7,7 +7,7 @@ your machine.** (Optional hosted-API presets exist for convenience, but they're
 strictly opt-in; the default powerful path is 100% local.)
 
 Roadmap: **Module 1 ✅** · **Module 2 ✅** · **Module 3 ✅** · **Module 4 ✅** ·
-Modules 5–6 (auto-verifiers, swarm/sandbox) land next.
+**Module 5 ✅** · Module 6 (swarm/sandbox) lands next.
 
 ## 🌐 One brain for everyone — Central Hub
 
@@ -92,12 +92,22 @@ terminal output collapsed (head+tail + error/signal lines) — summarized by the
 LLM when online, deterministically offline. `find_compact_boundary` marks where
 "recent" begins; the result is guaranteed under `ContextBudget.max_tokens`.
 
+## Module 5 — Auto-Verifiers & Self-Correction
+
+The AI runs its own code and fixes itself. `CliVerifier` executes code/commands
+(subprocess or tmux) and `TracebackParser` distills the error; `ApiVerifier`
+probes HTTP endpoints (optionally after booting a server). `SelfCorrectionLoop`
+feeds each traceback back into the prompt queue and regenerates until it passes
+(fail-fast: bails on a repeating error). `AutoEngineer` ties this to the Module-1
+Tool-Maker and records verified wins into the soul.
+
 ## Tests (all fully offline)
 ```bash
-python3 engine/tests/test_module1.py   # two-model + soul       (8)
-python3 engine/tests/test_module2.py   # task machine + dream    (10)
-python3 engine/tests/test_module3.py   # sync/flush gate         (5)
-python3 engine/tests/test_module4.py   # memory compaction       (8)
+python3 engine/tests/test_module1.py   # two-model + soul        (8)
+python3 engine/tests/test_module2.py   # task machine + dream     (10)
+python3 engine/tests/test_module3.py   # sync/flush gate          (5)
+python3 engine/tests/test_module4.py   # memory compaction        (8)
+python3 engine/tests/test_module5.py   # verifiers + self-correct (9)
 ```
 
 ## Module 1 — Two-Model System & Soul Engine

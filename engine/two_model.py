@@ -171,6 +171,21 @@ class TwoModelSystem:
         self._after_turn(task, f"[generated tool `{name}`]", ModelRole.TOOL_MAKER)
         return tool
 
+    async def draft_tool_code(self, task: str, feedback: Optional[List[str]] = None) -> str:
+        """Generate tool code WITHOUT persisting — used by the self-correction
+        loop, which feeds prior tracebacks back in via `feedback`."""
+        messages = [Message(role=Role.SYSTEM, content=_TOOL_MAKER_SYSTEM)]
+        if feedback:
+            messages.append(Message(
+                role=Role.SYSTEM,
+                content="Your previous attempts FAILED when executed:\n"
+                        + "\n".join(f"- {f}" for f in feedback)
+                        + "\nReturn a corrected version that runs with no error.",
+            ))
+        messages.append(Message(role=Role.USER, content=task))
+        resp = await self.llm.complete(messages, role=ModelRole.TOOL_MAKER)
+        return self._extract_code(resp.text)
+
     # ------------------------------------------------------------- unified io
     async def handle(self, prompt: str) -> Dict[str, object]:
         """Route automatically and return a normalized envelope."""

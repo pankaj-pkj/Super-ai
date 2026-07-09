@@ -48,7 +48,8 @@ def _build_brain() -> TwoModelSystem:
     cfg = EngineConfig.from_env()
     if model:  # local, no-API brain on the server's GPU
         from .providers import local_brain
-        return TwoModelSystem(cfg, local_brain(model, cfg=cfg))
+        four_bit = os.getenv("SUPERAI_HUB_4BIT", "").lower() in ("1", "true", "yes")
+        return TwoModelSystem(cfg, local_brain(model, cfg=cfg, load_in_4bit=four_bit))
     return TwoModelSystem(cfg, LLMClient(cfg))  # API key if set, else offline
 
 

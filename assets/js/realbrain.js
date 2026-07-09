@@ -93,13 +93,16 @@ export class RealBrain {
   }
 
   // Streams the reply; onToken receives the accumulated text so far.
-  async chat(prompt, onToken) {
+  // `history` (optional [{role,content}]) overrides internal memory so context
+  // survives page reloads and matches the visible conversation.
+  async chat(prompt, onToken, history = null) {
     if (!this.engine) throw new Error("Real Brain not loaded yet");
     let sys = SYSTEM_PROMPT;
     if (this.userName) sys += ` The user's name is ${this.userName}.`;
+    const prior = (history && history.length) ? history.slice(-8) : this.history.slice(-8);
     const messages = [
       { role: "system", content: sys },
-      ...this.history.slice(-8),
+      ...prior,
       { role: "user", content: prompt },
     ];
     const stream = await this.engine.chat.completions.create({

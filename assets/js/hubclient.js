@@ -32,12 +32,13 @@ export class HubClient {
   }
 
   // Stream a reply token-by-token from the shared brain.
+  // `history` is prior [{role,content}] turns for multi-turn context.
   // onToken(fullTextSoFar) fires as tokens arrive. Returns the full text.
-  async chatStream(message, onToken) {
+  async chatStream(message, history, onToken) {
     const r = await fetch(this.base + "/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, stream: true }),
+      body: JSON.stringify({ message, history: history || [], stream: true }),
     });
     if (!r.ok || !r.body) throw new Error("hub HTTP " + r.status);
     const reader = r.body.getReader();

@@ -28,7 +28,7 @@ from pydantic import BaseModel
 
 from .config import EngineConfig
 from .llm import LLMClient
-from .models import ModelRole
+from .models import Message, ModelRole, Role
 from .sync import FlushGate, SyncEvent, sse_sink
 from .tasks import TaskManager, TaskType
 from .two_model import TwoModelSystem
@@ -69,10 +69,26 @@ app.add_middleware(
 )
 
 
+class ChatTurn(BaseModel):
+    role: str
+    content: str
+
+
 class ChatIn(BaseModel):
     message: str
     user: str = "anonymous"
     stream: bool = False
+    history: list[ChatTurn] = []   # prior turns for multi-turn context
+
+
+def _history_messages(history: list["ChatTurn"]) -> list[Message]:
+    out: list[Message] = []
+    for t in history[-12:]:
+        role = t.role.lower()
+        if role in ("user", "assistant"):  # ignore client-sent system to protect the soul
+            out.append(Message(role=Role.USER if role == "user" else Role.ASSISTANT,
+                               content=t.content))
+    return out
 
 
 @app.get("/health")
@@ -88,17 +104,20 @@ async def health():
 
 @app.post("/chat")
 async def chat(inp: ChatIn):
-    """Every client hits this ONE brain — same power for everyone."""
+    """Every client hits this ONE brain — same power for everyone.
+    `history` carries prior turns so follow-ups ('now make it faster') keep
+    context instead of being treated as a brand-new request."""
+    extra = _history_messages(inp.history)
     if inp.stream:
         import json as _json
         async def gen():
             # JSON-encode each token so multi-line code never breaks SSE framing
-            async for tok in state.agent.chat_stream(inp.message):
+            async for tok in state.agent.chat_stream(inp.message, extra=extra):
                 yield f"data: {_json.dumps(tok)}\n\n"
             yield "data: [DONE]\n\n"
         return StreamingResponse(gen(), media_type="text/event-stream")
-    result = await state.agent.handle(inp.message)
-    return JSONResponse(result)
+    resp = await state.agent.chat(inp.message, extra=extra)
+    return JSONResponse({"kind": "chat", "response": resp.model_dump()})
 
 
 @app.get("/tools")

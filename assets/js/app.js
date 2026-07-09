@@ -25,6 +25,7 @@ let lang = localStorage.getItem("superai_lang") || "en";
 let busy = false;
 let sessionId = localStorage.getItem("superai_session") || "s_" + Date.now().toString(36);
 localStorage.setItem("superai_session", sessionId);
+let convo = [];  // {role, content} turns of the CURRENT session — gives chat continuity
 
 let store, brain, bank, harvester;
 const realBrain = new RealBrain();
@@ -134,7 +135,9 @@ async function restoreHistory() {
   const chats = await store.recentChats(30, sessionId);
   await renderSessions();
   if (!chats.length) return;
+  convo = [];
   for (const c of chats) {
+    convo.push({ role: "user", content: c.prompt }, { role: "assistant", content: c.response });
     addMsg("user", md(c.prompt));
     const m = addMsg("ai", md(c.response));
     const info = MODELS[c.model] || {};
@@ -168,6 +171,7 @@ async function renderSessions() {
 window.newChat = function () {
   sessionId = "s_" + Date.now().toString(36);
   localStorage.setItem("superai_session", sessionId);
+  convo = [];
   document.querySelectorAll(".msg, .history-sep").forEach((el) => el.remove());
   const chat = $("chat");
   if (!$("welcome")) {
@@ -187,7 +191,9 @@ async function switchSession(sid) {
   localStorage.setItem("superai_session", sid);
   document.querySelectorAll(".msg, .history-sep, #welcome").forEach((el) => el.remove());
   const chats = await store.recentChats(40, sid);
+  convo = [];
   for (const c of chats) {
+    convo.push({ role: "user", content: c.prompt }, { role: "assistant", content: c.response });
     addMsg("user", md(c.prompt));
     const m = addMsg("ai", md(c.response));
     const info = MODELS[c.model] || {};
@@ -418,6 +424,7 @@ window.send = async function () {
 
     const t0 = performance.now();
     let response, aiMsg;
+    const history = convo.slice(-8);  // prior turns → chat keeps context on follow-ups
     // Identity/creator questions always answer locally (guaranteed codian_studio).
     const CREATOR = /(who (made|created|built|are) you|kisne banaya|tum kaun|kaun ho|aap kaun|tumhe kisne)/i;
     // Priority: GPU Hub (shared powerful brain) → on-device Neo → local engine.
@@ -448,7 +455,7 @@ window.send = async function () {
         if (done) clearInterval(painter);
       }, 80);
       try {
-        response = await hub.chatStream(text, (partial) => { latest = partial; });
+        response = await hub.chatStream(text, history, (partial) => { latest = partial; });
       } catch (err) {
         // Hub went down mid-session → fall back to the local engine, no data lost
         hub.active = false;
@@ -472,7 +479,7 @@ window.send = async function () {
         if (done) clearInterval(painter);
       }, 80);
       try {
-        response = await realBrain.chat(text, (partial) => { latest = partial; });
+        response = await realBrain.chat(text, (partial) => { latest = partial; }, history);
       } finally {
         done = true;
       }
@@ -488,6 +495,9 @@ window.send = async function () {
     const cost = bank.costOf(text, response, currentModel);
     await bank.spend(userId, cost);
     const chatId = await store.logChat(userId, currentModel, text, response, cost, sessionId);
+    // remember this turn so the NEXT message keeps context ("now make it faster")
+    convo.push({ role: "user", content: text }, { role: "assistant", content: response });
+    if (convo.length > 40) convo = convo.slice(-40);
     // learn from every conversation (the user is teaching it), then refresh history
     await brain.learnFromChat(text);
     if ((useBrain || useHub) && response) await brain.learnText(`brain:${Date.now()}`, "AI answer", response, "chat");

@@ -107,6 +107,32 @@ Put HTTPS in front (so the website can call it): easiest is Cloudflare Tunnel
 
 ---
 
+## PART 1.5 — Testing with NO GPU yet (CPU / a friend's server)
+
+You can test the whole system on a plain CPU server (e.g. a friend's AWS Ubuntu)
+before spending on a GPU. Use **Ollama** — it runs small quantized models on CPU
+efficiently, fully local (still no external API):
+
+```bash
+# on the CPU box
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull qwen2.5-coder:7b          # ~4.7GB, runs on CPU
+ollama serve &                        # OpenAI-compatible at localhost:11434/v1
+
+cd Super-ai && pip install -r engine/requirements.txt
+# point the engine at local Ollama (no GPU, no external API):
+export SUPERAI_API_BASE=http://localhost:11434/v1
+export SUPERAI_API_KEY=ollama         # dummy value; Ollama ignores it
+export SUPERAI_CHAT_MODEL=qwen2.5-coder:7b
+export SUPERAI_TOOL_MODEL=qwen2.5-coder:7b
+uvicorn engine.hub:app --host 0.0.0.0 --port 8000
+```
+
+⚠️ On CPU it's **slow** — a few words per second (a full answer can take 30–120s).
+That's fine to confirm everything works end-to-end. For real speed you need a GPU
+(Part 1). Tip: `qwen2.5-coder:1.5b` is much faster on CPU if you just want to test
+the plumbing.
+
 ## PART 2 — The cPanel box (the website)
 
 Your website is already built. Deploy it and point it at the brain.

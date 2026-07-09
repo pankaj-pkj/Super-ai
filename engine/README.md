@@ -6,8 +6,9 @@ asyncio + Pydantic v2). Runs on your own cloud/GPU (cPanel) and portable envs
 your machine.** (Optional hosted-API presets exist for convenience, but they're
 strictly opt-in; the default powerful path is 100% local.)
 
-Roadmap: **Module 1 ✅** · **Module 2 ✅** · **Module 3 ✅** · **Module 4 ✅** ·
-**Module 5 ✅** · Module 6 (swarm/sandbox) lands next.
+Status: **ALL 6 MODULES COMPLETE** ✅ — Module 1 (two-model + soul) · 2 (task
+state machine + dream) · 3 (sync/flush gate) · 4 (memory compaction) · 5
+(auto-verify + self-correct) · 6 (swarm + sandbox). 49 checks pass fully offline.
 
 ## 🌐 One brain for everyone — Central Hub
 
@@ -108,7 +109,19 @@ python3 engine/tests/test_module2.py   # task machine + dream     (10)
 python3 engine/tests/test_module3.py   # sync/flush gate          (5)
 python3 engine/tests/test_module4.py   # memory compaction        (8)
 python3 engine/tests/test_module5.py   # verifiers + self-correct (9)
+python3 engine/tests/test_module6.py   # swarm + sandbox          (9)
 ```
+
+## Module 6 — Multi-Agent Orchestration & Sandboxing
+
+`SwarmOrchestrator` delegates a goal across **Planner → Coder → Reviewer**
+sub-agents (shared brain, different hats); the Reviewer uses real ground truth
+(AST parse + placeholder scan) and sends rejections back to the Coder for bounded
+rounds, then the approved code runs in a sandbox. Sandboxes (`sandbox.py`):
+`DockerSandbox` (OS-level isolation, no network, mem/cpu/pids caps) ›
+`TermuxSandbox` (proot rootfs on Termux) › `LocalSandbox` (confined dir + ulimit
+caps + denylist). `pick_sandbox()` auto-selects the strongest available. All
+enforce timeout + process-group kill so a fork bomb or runaway can't crash the host.
 
 ## Module 1 — Two-Model System & Soul Engine
 

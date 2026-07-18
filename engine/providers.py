@@ -90,6 +90,7 @@ def list_presets() -> str:
 # fp16; 4-bit roughly a third. Pick by your GPU.
 LOCAL_MODELS: Dict[str, str] = {
     "coder-7b":  "Qwen/Qwen2.5-Coder-7B-Instruct",     # ~16GB fp16 / ~6GB 4-bit — best value for code
+    "coder-14b": "Qwen/Qwen2.5-Coder-14B-Instruct",    # ~28GB fp16 / ~9GB 4-bit — fits a 16GB card, stronger than 7b
     "coder-32b": "Qwen/Qwen2.5-Coder-32B-Instruct",    # 24GB+ / 4-bit — strong coding
     "glm-9b":    "zai-org/GLM-4-9B-0414",              # GLM locally on one GPU — your "real mind"
     "llama-8b":  "meta-llama/Llama-3.1-8B-Instruct",   # general
